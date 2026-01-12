@@ -18,17 +18,26 @@ interface TransportConfig {
   args?: string[];
 }
 
+// Check if testing against installed npm package
+const TEST_NPM_PACKAGE = process.env.TEST_NPM_PACKAGE === "true";
+
 // Default configurations
 const HTTP_CONFIG: TransportConfig = {
   mode: "http",
   url: process.env.MCP_SERVER_URL || "http://localhost:3000",
 };
 
-const STDIO_CONFIG: TransportConfig = {
-  mode: "stdio",
-  command: "node",
-  args: [resolve(__dirname, "../../dist/main-stdio.js")],
-};
+const STDIO_CONFIG: TransportConfig = TEST_NPM_PACKAGE
+  ? {
+      mode: "stdio",
+      command: "ankimcp",
+      args: ["--stdio"],
+    }
+  : {
+      mode: "stdio",
+      command: "node",
+      args: [resolve(__dirname, "../../dist/main-stdio.js")],
+    };
 
 // Current transport config (set by test setup)
 let currentConfig: TransportConfig = HTTP_CONFIG;
