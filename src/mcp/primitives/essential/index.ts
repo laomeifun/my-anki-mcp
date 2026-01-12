@@ -66,10 +66,9 @@ import { ReviewSessionPrompt } from "./prompts/review-session.prompt";
 import { TwentyRulesPrompt } from "./prompts/twenty-rules.prompt";
 import { SystemInfoResource } from "./resources/system-info.resource";
 
-const MCP_PRIMITIVES = [
-  // Client
-  AnkiConnectClient,
-  // Tools
+// MCP primitives that need to be discovered by McpNest (tools, prompts, resources)
+// These are exported for use in AppModule.providers (required by MCP-Nest 1.9.0+)
+export const ESSENTIAL_MCP_TOOLS = [
   SyncTool,
   ListDecksTool,
   CreateDeckTool,
@@ -95,6 +94,12 @@ const MCP_PRIMITIVES = [
   SystemInfoResource,
 ];
 
+// All providers for the module (includes infrastructure like AnkiConnectClient)
+const ESSENTIAL_MCP_PRIMITIVES = [
+  AnkiConnectClient,
+  ...ESSENTIAL_MCP_TOOLS,
+];
+
 export interface McpPrimitivesAnkiEssentialModuleOptions {
   ankiConfigProvider: Provider;
 }
@@ -106,8 +111,8 @@ export class McpPrimitivesAnkiEssentialModule {
   ): DynamicModule {
     return {
       module: McpPrimitivesAnkiEssentialModule,
-      providers: [options.ankiConfigProvider, ...MCP_PRIMITIVES],
-      exports: MCP_PRIMITIVES,
+      providers: [options.ankiConfigProvider, ...ESSENTIAL_MCP_PRIMITIVES],
+      exports: ESSENTIAL_MCP_PRIMITIVES,
     };
   }
 }
