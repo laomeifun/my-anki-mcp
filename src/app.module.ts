@@ -52,11 +52,7 @@ export class AppModule {
         }),
       ],
       // MCP-Nest 1.9.0+ requires tools to be explicitly listed in the module where McpModule.forRoot() is configured
-      providers: [
-        AnkiConfigService,
-        ...ESSENTIAL_MCP_TOOLS,
-        ...GUI_MCP_TOOLS,
-      ],
+      providers: [AnkiConfigService, ...ESSENTIAL_MCP_TOOLS, ...GUI_MCP_TOOLS],
     };
   }
 
@@ -99,11 +95,7 @@ export class AppModule {
         }),
       ],
       // MCP-Nest 1.9.0+ requires tools to be explicitly listed in the module where McpModule.forRoot() is configured
-      providers: [
-        AnkiConfigService,
-        ...ESSENTIAL_MCP_TOOLS,
-        ...GUI_MCP_TOOLS,
-      ],
+      providers: [AnkiConfigService, ...ESSENTIAL_MCP_TOOLS, ...GUI_MCP_TOOLS],
     };
   }
 }

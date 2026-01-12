@@ -95,10 +95,7 @@ export const ESSENTIAL_MCP_TOOLS = [
 ];
 
 // All providers for the module (includes infrastructure like AnkiConnectClient)
-const ESSENTIAL_MCP_PRIMITIVES = [
-  AnkiConnectClient,
-  ...ESSENTIAL_MCP_TOOLS,
-];
+const ESSENTIAL_MCP_PRIMITIVES = [AnkiConnectClient, ...ESSENTIAL_MCP_TOOLS];
 
 export interface McpPrimitivesAnkiEssentialModuleOptions {
   ankiConfigProvider: Provider;
