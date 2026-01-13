@@ -73,6 +73,10 @@
       "description": "Get field names for a specific note type"
     },
     {
+      "name": "getTags",
+      "description": "Get all tags in the Anki collection. Helps discover existing tags before creating notes to prevent duplication"
+    },
+    {
       "name": "modelStyling",
       "description": "Get CSS styling information for a note type"
     },

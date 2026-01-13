@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is an MCP (Model Context Protocol) server that enables AI assistants to interact with Anki via the AnkiConnect plugin. Built with NestJS and the `@rekog/mcp-nest` library, it exposes Anki functionality as MCP tools, prompts, and resources.
 
-**Version**: 0.9.0 (Beta) - This project is in active development. Breaking changes may occur in 0.x versions.
+**Version**: 0.10.0 (Beta) - This project is in active development. Breaking changes may occur in 0.x versions.
 
 **License**: AGPL-3.0-or-later - Changed from MIT to enable future integration of Anki source code. See README.md for details.
 
@@ -17,7 +17,9 @@ This is an MCP (Model Context Protocol) server that enables AI assistants to int
 - `architecture-tunnel.md` - Ngrok tunnel integration architecture
 - `gui-tools-implementation-plan.md` - GUI tools design and planning
 - `MODEL_ACTIONS_IMPLEMENTATION_PLAN.md` - Model creation/modification tools
-- `ACTIONS_IMPLEMENTATION.md` - AnkiConnect API implementation status tracking (31/127 actions completed)
+- `ACTIONS_IMPLEMENTATION.md` - AnkiConnect API implementation status tracking (32/127 actions completed)
+- `CLA_IMPLEMENTATION_GUIDE.md` - Contributor License Agreement implementation
+- `RAG_IMPLEMENTATION_PLAN.md` - RAG (Retrieval Augmented Generation) feature planning
 
 **NPM Package**: Published as `@ankimcp/anki-mcp-server` on npm registry for global installation. The old `anki-mcp-http` package continues to be published for backward compatibility but is deprecated.
 
@@ -56,6 +58,15 @@ npm run test:single                # Example: modify path in package.json script
 
 # Run a single test file (recommended):
 npm test -- path/to/test.spec.ts  # Example: npm test -- src/mcp/primitives/gui/tools/__tests__/gui-browse.tool.spec.ts
+
+# E2E Tests (requires Docker)
+npm run e2e:up                     # Start Anki + AnkiConnect Docker containers
+npm run e2e:down                   # Stop Docker containers
+npm run e2e:logs                   # View container logs
+npm run e2e:test                   # Run E2E tests (containers must be running)
+npm run e2e:test:http              # Run HTTP-specific E2E tests
+npm run e2e:test:stdio             # Run STDIO-specific E2E tests
+npm run e2e:full:local             # Full E2E suite: start containers, run tests, cleanup
 ```
 
 Test coverage thresholds are enforced at 70% for branches, functions, lines, and statements.
@@ -134,9 +145,10 @@ MCP primitives (tools, prompts, resources) are organized in feature modules:
 
 **`src/mcp/primitives/essential/`** - Core Anki functionality
 - **Tools**: `src/mcp/primitives/essential/tools/*.tool.ts` - MCP tools for Anki operations
-  - Review: `sync`, `get-due-cards`, `present-card`, `rate-card`
+  - Review: `sync`, `get-due-cards`, `get-cards`, `present-card`, `rate-card`
   - Decks: `list-decks`, `create-deck`
   - Notes: `add-note`, `find-notes`, `notes-info`, `update-note-fields`, `delete-notes`
+  - Tags: `get-tags` (discover existing tags to prevent duplication)
   - Media: `mediaActions` (storeMediaFile, retrieveMediaFile, getMediaFilesNames, deleteMediaFile)
   - Models: `model-names`, `model-field-names`, `model-styling`, `create-model`, `update-model-styling`
 - **Prompts**: `src/mcp/primitives/essential/prompts/*.prompt.ts` - MCP prompts (e.g., `review-session`)

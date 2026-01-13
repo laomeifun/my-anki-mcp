@@ -33,6 +33,7 @@ export { NotesInfoTool } from "./tools/notes-info.tool";
 export { UpdateNoteFieldsTool } from "./tools/update-note-fields.tool";
 export { DeleteNotesTool } from "./tools/delete-notes.tool";
 export { MediaActionsTool } from "./tools/mediaActions";
+export { GetTagsTool } from "./tools/get-tags.tool";
 
 // Prompts
 export { ReviewSessionPrompt } from "./prompts/review-session.prompt";
@@ -62,6 +63,7 @@ import { NotesInfoTool } from "./tools/notes-info.tool";
 import { UpdateNoteFieldsTool } from "./tools/update-note-fields.tool";
 import { DeleteNotesTool } from "./tools/delete-notes.tool";
 import { MediaActionsTool } from "./tools/mediaActions";
+import { GetTagsTool } from "./tools/get-tags.tool";
 import { ReviewSessionPrompt } from "./prompts/review-session.prompt";
 import { TwentyRulesPrompt } from "./prompts/twenty-rules.prompt";
 import { SystemInfoResource } from "./resources/system-info.resource";
@@ -87,6 +89,7 @@ export const ESSENTIAL_MCP_TOOLS = [
   UpdateNoteFieldsTool,
   DeleteNotesTool,
   MediaActionsTool,
+  GetTagsTool,
   // Prompts
   ReviewSessionPrompt,
   TwentyRulesPrompt,

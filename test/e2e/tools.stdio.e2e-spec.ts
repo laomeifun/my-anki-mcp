@@ -112,6 +112,64 @@ describe("E2E: MCP Tools (STDIO)", () => {
     });
   });
 
+  describe("Tag Tools", () => {
+    it("should list all tags", () => {
+      const result = callTool("getTags");
+      expect(result).toHaveProperty("tags");
+      expect(Array.isArray(result.tags)).toBe(true);
+      expect(result).toHaveProperty("total");
+    });
+
+    it("should return tags from notes with tags", () => {
+      const uid = uniqueId();
+      const deckName = `STDIO::TagTest${uid}`;
+      const uniqueTag = `stdio-e2e-tag-${uid}`;
+
+      // Create deck and note with unique tag
+      callTool("create_deck", { deck_name: deckName });
+      callTool("addNote", {
+        deckName: deckName,
+        modelName: "Basic",
+        fields: {
+          Front: `Tag Test Question ${uid}`,
+          Back: `Tag Test Answer ${uid}`,
+        },
+        tags: [uniqueTag, "e2e-common"],
+      });
+
+      // Retrieve tags and verify our unique tag exists
+      const result = callTool("getTags");
+      expect(result.success).toBe(true);
+      expect(result.tags as string[]).toContain(uniqueTag);
+      expect(result.tags as string[]).toContain("e2e-common");
+    });
+
+    it("should filter tags by pattern", () => {
+      const uid = uniqueId();
+      const deckName = `STDIO::FilterTag${uid}`;
+      const filterableTag = `stdio-filter-${uid}`;
+
+      // Create note with filterable tag
+      callTool("create_deck", { deck_name: deckName });
+      callTool("addNote", {
+        deckName: deckName,
+        modelName: "Basic",
+        fields: {
+          Front: `Filter Test ${uid}`,
+          Back: `Filter Answer ${uid}`,
+        },
+        tags: [filterableTag],
+      });
+
+      // Filter by pattern
+      const result = callTool("getTags", { pattern: `stdio-filter-${uid}` });
+      expect(result.success).toBe(true);
+      expect(result.filtered).toBe(true);
+      expect(result.tags as string[]).toContain(filterableTag);
+      expect((result.tags as string[]).length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
   describe("Add Note", () => {
     it("should create a basic note", () => {
       const uid = uniqueId();
