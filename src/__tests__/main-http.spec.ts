@@ -49,16 +49,15 @@ describe("HTTP Server (main-http integration)", () => {
   });
 
   describe("server startup", () => {
-    it("should start on default port 3000", async () => {
+    it("should start on dynamic port", async () => {
       const moduleFixture: TestingModule = await Test.createTestingModule({
         imports: [AppModule.forHttp()],
       }).compile();
 
       app = moduleFixture.createNestApplication();
       await app.init();
-      await app.listen(3000, "127.0.0.1");
+      await app.listen(0, "127.0.0.1");
 
-      // Server should be listening
       const server = app.getHttpServer();
       expect(server.listening).toBe(true);
 
