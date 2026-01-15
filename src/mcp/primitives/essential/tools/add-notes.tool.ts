@@ -103,24 +103,46 @@ export class AddNotesTool {
       this.logger.log(`Adding ${notes.length} note(s) in batch`);
       await context.reportProgress({ progress: 10, total: 100 });
 
-      // Step 1: Pre-validate all notes for empty fields
+      // Step 1: Fetch model field names for all unique models to identify primary fields
+      const uniqueModels = [...new Set(notes.map((n) => n.modelName))];
+      const modelFieldsMap = new Map<string, string[]>();
+
+      for (const modelName of uniqueModels) {
+        const fields = await this.ankiClient.invoke<string[]>(
+          "modelFieldNames",
+          { modelName },
+        );
+        if (!fields || fields.length === 0) {
+          return createErrorResponse(
+            new Error(`Model "${modelName}" not found or has no fields`),
+            {
+              modelName,
+              hint: "Use modelNames tool to see available models.",
+            },
+          );
+        }
+        modelFieldsMap.set(modelName, fields);
+      }
+
+      // Step 2: Validate only the primary (first) field is not empty for each note
+      // AnkiConnect requires the first field to have content for duplicate checking
       for (let i = 0; i < notes.length; i++) {
         const note = notes[i];
-        const emptyFields = Object.entries(note.fields).filter(
-          ([_, value]) =>
-            !value || (typeof value === "string" && value.trim() === ""),
-        );
-        if (emptyFields.length > 0) {
+        const modelFields = modelFieldsMap.get(note.modelName)!;
+        const primaryField = modelFields[0];
+        const primaryValue = note.fields[primaryField];
+
+        if (!primaryValue || primaryValue.trim() === "") {
           return createErrorResponse(
             new Error(
-              `Note at index ${i} has empty fields: ${emptyFields.map(([key]) => key).join(", ")}`,
+              `Note at index ${i}: Primary field "${primaryField}" cannot be empty.`,
             ),
             {
               noteIndex: i,
               deckName: note.deckName,
               modelName: note.modelName,
-              emptyFields: emptyFields.map(([key]) => key),
-              hint: "All fields must have non-empty values. Fix the validation errors and retry the entire batch.",
+              primaryField,
+              hint: `The first field of the "${note.modelName}" model must have content. Other fields can be empty.`,
             },
           );
         }

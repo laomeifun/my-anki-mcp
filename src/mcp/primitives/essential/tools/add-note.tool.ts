@@ -92,19 +92,38 @@ export class AddNoteTool {
     context: Context,
   ) {
     try {
-      // Validate fields are not empty
-      const emptyFields = Object.entries(fields).filter(
-        ([_, value]) => !value || value.trim() === "",
+      // Get model field names to identify the primary (first) field
+      const modelFields = await this.ankiClient.invoke<string[]>(
+        "modelFieldNames",
+        { modelName },
       );
-      if (emptyFields.length > 0) {
+
+      if (!modelFields || modelFields.length === 0) {
+        return createErrorResponse(
+          new Error(`Model "${modelName}" not found or has no fields`),
+          {
+            deckName,
+            modelName,
+            hint: "Use modelNames tool to see available models.",
+          },
+        );
+      }
+
+      // Validate only the primary (first) field is not empty
+      // AnkiConnect requires the first field to have content for duplicate checking
+      const primaryField = modelFields[0];
+      const primaryValue = fields[primaryField];
+
+      if (!primaryValue || primaryValue.trim() === "") {
         return createErrorResponse(
           new Error(
-            `Fields cannot be empty: ${emptyFields.map(([key]) => key).join(", ")}`,
+            `Primary field "${primaryField}" cannot be empty. AnkiConnect requires the first field to have content.`,
           ),
           {
             deckName,
             modelName,
-            emptyFields: emptyFields.map(([key]) => key),
+            primaryField,
+            hint: `The first field of the "${modelName}" model must have content. Other fields can be empty.`,
           },
         );
       }

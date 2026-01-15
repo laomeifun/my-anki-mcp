@@ -47,17 +47,53 @@ describe("AddNotesTool", () => {
     jest.clearAllMocks();
   });
 
+  const setupModelFieldNamesMock = (addNotesResult?: (number | null)[]) => {
+    ankiClient.invoke.mockImplementation((action: string, params?: unknown) => {
+      if (action === "modelFieldNames") {
+        const p = params as { modelName: string };
+        if (p.modelName === "Cloze") {
+          return Promise.resolve(["Text", "Back Extra"]);
+        }
+        if (p.modelName === "Vocabulary Advanced") {
+          return Promise.resolve([
+            "Word",
+            "Definition",
+            "Example",
+            "Pronunciation",
+            "Etymology",
+            "Notes",
+          ]);
+        }
+        if (p.modelName === "Custom Model") {
+          return Promise.resolve([
+            "Field-With-Dashes",
+            "Field_With_Underscores",
+            "Field With Spaces",
+          ]);
+        }
+        if (p.modelName === "Basic (and reversed card)") {
+          return Promise.resolve(["Front", "Back"]);
+        }
+        if (p.modelName === "TestModel") {
+          return Promise.resolve(["Front", "Back"]);
+        }
+        return Promise.resolve(["Front", "Back"]);
+      }
+      if (action === "addNotes") {
+        return Promise.resolve(addNotesResult ?? [null]);
+      }
+      return Promise.resolve(null);
+    });
+  };
+
   describe("Basic Batch Operations", () => {
     it("should successfully add a single note via batch", async () => {
-      // Arrange
+      setupModelFieldNamesMock([1234567890]);
       const notes = [makeNote()];
-      ankiClient.invoke.mockResolvedValueOnce([1234567890]);
 
-      // Act
       const rawResult = await tool.addNotes({ notes }, mockContext);
       const result = parseToolResult(rawResult);
 
-      // Assert
       expect(ankiClient.invoke).toHaveBeenCalledWith("addNotes", {
         notes: [
           {
@@ -76,19 +112,16 @@ describe("AddNotesTool", () => {
     });
 
     it("should successfully add multiple notes", async () => {
-      // Arrange
+      setupModelFieldNamesMock([111, 222, 333]);
       const notes = [
         makeNote({ fields: { Front: "Q1", Back: "A1" } }),
         makeNote({ fields: { Front: "Q2", Back: "A2" } }),
         makeNote({ fields: { Front: "Q3", Back: "A3" } }),
       ];
-      ankiClient.invoke.mockResolvedValueOnce([111, 222, 333]);
 
-      // Act
       const rawResult = await tool.addNotes({ notes }, mockContext);
       const result = parseToolResult(rawResult);
 
-      // Assert
       expect(result.success).toBe(true);
       expect(result.successCount).toBe(3);
       expect(result.noteIds).toEqual([111, 222, 333]);
@@ -111,14 +144,11 @@ describe("AddNotesTool", () => {
     });
 
     it("should add notes with tags", async () => {
-      // Arrange
+      setupModelFieldNamesMock([123]);
       const notes = [makeNote({ tags: ["spanish", "vocab"] })];
-      ankiClient.invoke.mockResolvedValueOnce([123]);
 
-      // Act
       await tool.addNotes({ notes }, mockContext);
 
-      // Assert
       expect(ankiClient.invoke).toHaveBeenCalledWith("addNotes", {
         notes: [
           expect.objectContaining({
@@ -129,18 +159,15 @@ describe("AddNotesTool", () => {
     });
 
     it("should add notes with duplicate options", async () => {
-      // Arrange
+      setupModelFieldNamesMock([123]);
       const notes = [
         makeNote({
           allowDuplicate: true,
         }),
       ];
-      ankiClient.invoke.mockResolvedValueOnce([123]);
 
-      // Act
       await tool.addNotes({ notes }, mockContext);
 
-      // Assert
       expect(ankiClient.invoke).toHaveBeenCalledWith("addNotes", {
         notes: [
           expect.objectContaining({
@@ -153,18 +180,15 @@ describe("AddNotesTool", () => {
     });
 
     it("should add notes to different decks in same batch", async () => {
-      // Arrange
+      setupModelFieldNamesMock([1, 2, 3]);
       const notes = [
         makeNote({ deckName: "Spanish" }),
         makeNote({ deckName: "French" }),
         makeNote({ deckName: "German" }),
       ];
-      ankiClient.invoke.mockResolvedValueOnce([1, 2, 3]);
 
-      // Act
       await tool.addNotes({ notes }, mockContext);
 
-      // Assert
       expect(ankiClient.invoke).toHaveBeenCalledWith("addNotes", {
         notes: [
           expect.objectContaining({ deckName: "Spanish" }),
@@ -175,17 +199,17 @@ describe("AddNotesTool", () => {
     });
 
     it("should add notes with different models in same batch", async () => {
-      // Arrange
+      setupModelFieldNamesMock([1, 2]);
       const notes = [
         makeNote({ modelName: "Basic" }),
-        makeNote({ modelName: "Cloze" }),
+        makeNote({
+          modelName: "Cloze",
+          fields: { Text: "{{c1::Answer}}", "Back Extra": "" },
+        }),
       ];
-      ankiClient.invoke.mockResolvedValueOnce([1, 2]);
 
-      // Act
       await tool.addNotes({ notes }, mockContext);
 
-      // Assert
       expect(ankiClient.invoke).toHaveBeenCalledWith("addNotes", {
         notes: [
           expect.objectContaining({ modelName: "Basic" }),
@@ -203,7 +227,7 @@ describe("AddNotesTool", () => {
         makeNote({ fields: { Front: "Q2", Back: "A2" } }), // This one will fail
         makeNote({ fields: { Front: "Q3", Back: "A3" } }),
       ];
-      ankiClient.invoke.mockResolvedValueOnce([111, null, 333]);
+      setupModelFieldNamesMock([111, null, 333]);
 
       // Act
       const rawResult = await tool.addNotes({ notes }, mockContext);
@@ -223,7 +247,7 @@ describe("AddNotesTool", () => {
         makeNote({ deckName: "Deck2" }),
         makeNote({ deckName: "Deck3" }),
       ];
-      ankiClient.invoke.mockResolvedValueOnce([null, 222, null]);
+      setupModelFieldNamesMock([null, 222, null]);
 
       // Act
       const rawResult = await tool.addNotes({ notes }, mockContext);
@@ -253,7 +277,7 @@ describe("AddNotesTool", () => {
     it("should return success=true when at least one note succeeds", async () => {
       // Arrange
       const notes = [makeNote(), makeNote(), makeNote()];
-      ankiClient.invoke.mockResolvedValueOnce([null, null, 999]);
+      setupModelFieldNamesMock([null, null, 999]);
 
       // Act
       const rawResult = await tool.addNotes({ notes }, mockContext);
@@ -268,7 +292,7 @@ describe("AddNotesTool", () => {
     it("should include hint when there are partial failures", async () => {
       // Arrange
       const notes = [makeNote(), makeNote()];
-      ankiClient.invoke.mockResolvedValueOnce([111, null]);
+      setupModelFieldNamesMock([111, null]);
 
       // Act
       const rawResult = await tool.addNotes({ notes }, mockContext);
@@ -284,7 +308,7 @@ describe("AddNotesTool", () => {
       const notes = [
         makeNote({ deckName: "TestDeck", modelName: "TestModel" }),
       ];
-      ankiClient.invoke.mockResolvedValueOnce([null]);
+      setupModelFieldNamesMock([null]);
 
       // Act
       const rawResult = await tool.addNotes({ notes }, mockContext);
@@ -306,7 +330,7 @@ describe("AddNotesTool", () => {
     it("should return success=false when all notes fail", async () => {
       // Arrange
       const notes = [makeNote(), makeNote(), makeNote()];
-      ankiClient.invoke.mockResolvedValueOnce([null, null, null]);
+      setupModelFieldNamesMock([null, null, null]);
 
       // Act
       const rawResult = await tool.addNotes({ notes }, mockContext);
@@ -324,7 +348,7 @@ describe("AddNotesTool", () => {
         makeNote({ deckName: "D1" }),
         makeNote({ deckName: "D2" }),
       ];
-      ankiClient.invoke.mockResolvedValueOnce([null, null]);
+      setupModelFieldNamesMock([null, null]);
 
       // Act
       const rawResult = await tool.addNotes({ notes }, mockContext);
@@ -340,7 +364,7 @@ describe("AddNotesTool", () => {
     it("should provide helpful error message when all fail", async () => {
       // Arrange
       const notes = [makeNote()];
-      ankiClient.invoke.mockResolvedValueOnce([null]);
+      setupModelFieldNamesMock([null]);
 
       // Act
       const rawResult = await tool.addNotes({ notes }, mockContext);
@@ -355,50 +379,59 @@ describe("AddNotesTool", () => {
   });
 
   describe("Validation", () => {
-    it("should reject batch with empty fields in any note", async () => {
-      // Arrange
+    it("should reject batch when primary field is empty", async () => {
+      setupModelFieldNamesMock();
       const notes = [
         makeNote({ fields: { Front: "Valid", Back: "Valid" } }),
-        makeNote({ fields: { Front: "", Back: "Valid" } }), // Empty field
+        makeNote({ fields: { Front: "", Back: "Valid" } }),
       ];
 
-      // Act
       const rawResult = await tool.addNotes({ notes }, mockContext);
       const result = parseToolResult(rawResult);
 
-      // Assert
-      expect(ankiClient.invoke).not.toHaveBeenCalled();
       expect(result.success).toBe(false);
-      expect(result.error).toContain("empty fields");
+      expect(result.error).toContain("Primary field");
+      expect(result.error).toContain("cannot be empty");
     });
 
     it("should identify the index of the invalid note", async () => {
-      // Arrange
+      setupModelFieldNamesMock();
       const notes = [
         makeNote({ fields: { Front: "Valid", Back: "Valid" } }),
         makeNote({ fields: { Front: "Valid", Back: "Valid" } }),
-        makeNote({ fields: { Front: "   ", Back: "Valid" } }), // Whitespace only
+        makeNote({ fields: { Front: "   ", Back: "Valid" } }),
       ];
 
-      // Act
       const rawResult = await tool.addNotes({ notes }, mockContext);
       const result = parseToolResult(rawResult);
 
-      // Assert
       expect(result.noteIndex).toBe(2);
     });
 
-    it("should identify which fields are empty", async () => {
-      // Arrange
-      const notes = [makeNote({ fields: { Front: "", Back: "" } })];
+    it("should allow empty non-primary fields", async () => {
+      setupModelFieldNamesMock();
+      ankiClient.invoke
+        .mockImplementationOnce(() => Promise.resolve(["Front", "Back"]))
+        .mockResolvedValueOnce([123]);
 
-      // Act
+      const notes = [makeNote({ fields: { Front: "Valid", Back: "" } })];
+
       const rawResult = await tool.addNotes({ notes }, mockContext);
       const result = parseToolResult(rawResult);
 
-      // Assert
-      expect(result.emptyFields).toContain("Front");
-      expect(result.emptyFields).toContain("Back");
+      expect(result.success).toBe(true);
+      expect(result.noteIds).toEqual([123]);
+    });
+
+    it("should identify primary field name in error", async () => {
+      setupModelFieldNamesMock();
+      const notes = [makeNote({ fields: { Front: "", Back: "Valid" } })];
+
+      const rawResult = await tool.addNotes({ notes }, mockContext);
+      const result = parseToolResult(rawResult);
+
+      expect(result.primaryField).toBe("Front");
+      expect(result.hint).toContain("first field");
     });
   });
 
@@ -468,7 +501,7 @@ describe("AddNotesTool", () => {
     it("should report progress at multiple stages", async () => {
       // Arrange
       const notes = [makeNote()];
-      ankiClient.invoke.mockResolvedValueOnce([123]);
+      setupModelFieldNamesMock([123]);
 
       // Act
       await tool.addNotes({ notes }, mockContext);
@@ -516,7 +549,7 @@ describe("AddNotesTool", () => {
     it("should include all required fields on success", async () => {
       // Arrange
       const notes = [makeNote()];
-      ankiClient.invoke.mockResolvedValueOnce([123]);
+      setupModelFieldNamesMock([123]);
 
       // Act
       const rawResult = await tool.addNotes({ notes }, mockContext);
@@ -538,7 +571,7 @@ describe("AddNotesTool", () => {
         makeNote({ deckName: "D1", modelName: "M1" }),
         makeNote({ deckName: "D2", modelName: "M2" }),
       ];
-      ankiClient.invoke.mockResolvedValueOnce([111, 222]);
+      setupModelFieldNamesMock([111, 222]);
 
       // Act
       const rawResult = await tool.addNotes({ notes }, mockContext);
@@ -565,7 +598,7 @@ describe("AddNotesTool", () => {
     it("should include noteIds array with only successful IDs", async () => {
       // Arrange
       const notes = [makeNote(), makeNote(), makeNote()];
-      ankiClient.invoke.mockResolvedValueOnce([111, null, 333]);
+      setupModelFieldNamesMock([111, null, 333]);
 
       // Act
       const rawResult = await tool.addNotes({ notes }, mockContext);
@@ -579,7 +612,7 @@ describe("AddNotesTool", () => {
     it("should not include hint when all notes succeed", async () => {
       // Arrange
       const notes = [makeNote()];
-      ankiClient.invoke.mockResolvedValueOnce([123]);
+      setupModelFieldNamesMock([123]);
 
       // Act
       const rawResult = await tool.addNotes({ notes }, mockContext);
@@ -592,7 +625,7 @@ describe("AddNotesTool", () => {
     it("should include hint when partial failure", async () => {
       // Arrange
       const notes = [makeNote(), makeNote()];
-      ankiClient.invoke.mockResolvedValueOnce([123, null]);
+      setupModelFieldNamesMock([123, null]);
 
       // Act
       const rawResult = await tool.addNotes({ notes }, mockContext);
@@ -615,7 +648,7 @@ describe("AddNotesTool", () => {
           },
         }),
       ];
-      ankiClient.invoke.mockResolvedValueOnce([123]);
+      setupModelFieldNamesMock([123]);
 
       // Act
       const rawResult = await tool.addNotes({ notes }, mockContext);
@@ -645,7 +678,7 @@ describe("AddNotesTool", () => {
           },
         }),
       ];
-      ankiClient.invoke.mockResolvedValueOnce([123]);
+      setupModelFieldNamesMock([123]);
 
       // Act
       const rawResult = await tool.addNotes({ notes }, mockContext);
@@ -666,7 +699,7 @@ describe("AddNotesTool", () => {
           },
         }),
       ];
-      ankiClient.invoke.mockResolvedValueOnce([123]);
+      setupModelFieldNamesMock([123]);
 
       // Act
       const rawResult = await tool.addNotes({ notes }, mockContext);
@@ -680,7 +713,7 @@ describe("AddNotesTool", () => {
       // Arrange
       const manyTags = Array.from({ length: 50 }, (_, i) => `tag${i}`);
       const notes = [makeNote({ tags: manyTags })];
-      ankiClient.invoke.mockResolvedValueOnce([123]);
+      setupModelFieldNamesMock([123]);
 
       // Act
       await tool.addNotes({ notes }, mockContext);
@@ -696,18 +729,15 @@ describe("AddNotesTool", () => {
     });
 
     it("should handle maximum batch size (25 notes)", async () => {
-      // Arrange
       const notes = Array.from({ length: 25 }, (_, i) =>
         makeNote({ fields: { Front: `Q${i}`, Back: `A${i}` } }),
       );
       const noteIds = Array.from({ length: 25 }, (_, i) => 1000 + i);
-      ankiClient.invoke.mockResolvedValueOnce(noteIds);
+      setupModelFieldNamesMock(noteIds);
 
-      // Act
       const rawResult = await tool.addNotes({ notes }, mockContext);
       const result = parseToolResult(rawResult);
 
-      // Assert
       expect(result.success).toBe(true);
       expect(result.successCount).toBe(25);
       expect(result.noteIds).toHaveLength(25);
@@ -726,7 +756,7 @@ describe("AddNotesTool", () => {
           },
         },
       ];
-      ankiClient.invoke.mockResolvedValueOnce([123]);
+      setupModelFieldNamesMock([123]);
 
       const rawResult = await tool.addNotes({ notes }, mockContext);
       const result = parseToolResult(rawResult);
@@ -756,7 +786,7 @@ describe("AddNotesTool", () => {
           },
         },
       ];
-      ankiClient.invoke.mockResolvedValueOnce([456]);
+      setupModelFieldNamesMock([456]);
 
       const rawResult = await tool.addNotes({ notes }, mockContext);
       const result = parseToolResult(rawResult);
@@ -780,7 +810,7 @@ describe("AddNotesTool", () => {
           },
         },
       ];
-      ankiClient.invoke.mockResolvedValueOnce([789]);
+      setupModelFieldNamesMock([789]);
 
       const rawResult = await tool.addNotes({ notes }, mockContext);
       const result = parseToolResult(rawResult);
@@ -817,7 +847,7 @@ describe("AddNotesTool", () => {
           fields: { Front: "Q2", Back: "A2" },
         },
       ];
-      ankiClient.invoke.mockResolvedValueOnce([1, 2, 3]);
+      setupModelFieldNamesMock([1, 2, 3]);
 
       const rawResult = await tool.addNotes({ notes }, mockContext);
       const result = parseToolResult(rawResult);
@@ -838,7 +868,7 @@ describe("AddNotesTool", () => {
           },
         },
       ];
-      ankiClient.invoke.mockResolvedValueOnce([999]);
+      setupModelFieldNamesMock([999]);
 
       const rawResult = await tool.addNotes({ notes }, mockContext);
       const result = parseToolResult(rawResult);
@@ -878,20 +908,17 @@ describe("AddNotesTool", () => {
         {
           deckName: "Default",
           modelName: "Cloze",
-          fields: { WrongField: "value", AnotherWrong: "value2" },
+          fields: { Text: "{{c1::test}}", WrongExtra: "value2" },
         },
       ];
-      ankiClient.invoke.mockResolvedValueOnce([111, null]);
+      setupModelFieldNamesMock([111, null]);
 
       const rawResult = await tool.addNotes({ notes }, mockContext);
       const result = parseToolResult(rawResult);
 
       expect(result.successCount).toBe(1);
       expect(result.failedCount).toBe(1);
-      expect(result.results[1].providedFields).toEqual([
-        "WrongField",
-        "AnotherWrong",
-      ]);
+      expect(result.results[1].providedFields).toEqual(["Text", "WrongExtra"]);
       expect(result.results[1].error).toContain("modelFieldNames");
     });
 
