@@ -10,6 +10,21 @@ import {
 } from "@/mcp/utils/anki.utils";
 
 /**
+ * Preprocess function to handle notes passed as JSON string (common MCP client bug)
+ * Automatically parses string input to array for robustness
+ */
+function preprocessNotesInput(val: unknown): unknown {
+  if (typeof val === "string") {
+    try {
+      return JSON.parse(val);
+    } catch {
+      return val;
+    }
+  }
+  return val;
+}
+
+/**
  * Schema for individual note input (matches addNote tool structure)
  */
 const NoteInputSchema = z.object({
@@ -89,22 +104,51 @@ export class AddNotesTool {
       "Use modelNames to see available note types and modelFieldNames to see required fields. " +
       "IMPORTANT: Only create notes that were explicitly requested by the user.",
     parameters: z.object({
-      notes: z
-        .array(NoteInputSchema)
-        .min(1)
-        .max(25)
-        .describe(
-          "Array of notes to add (1-25 notes). Each note requires deckName, modelName, and fields.",
-        ),
+      notes: z.preprocess(
+        preprocessNotesInput,
+        z
+          .array(NoteInputSchema)
+          .min(1)
+          .max(25)
+          .describe(
+            "Array of notes to add (1-25 notes). Each note requires deckName, modelName, and fields.",
+          ),
+      ),
     }),
   })
-  async addNotes({ notes }: { notes: NoteInput[] }, context: Context) {
+  async addNotes({ notes }: { notes: NoteInput[] | string }, context: Context) {
+    // Handle notes passed as JSON string (common MCP client bug)
+    let parsedNotes: NoteInput[];
+    if (typeof notes === "string") {
+      try {
+        parsedNotes = JSON.parse(notes);
+        this.logger.warn(
+          "notes parameter passed as JSON string instead of array - auto-parsing",
+        );
+      } catch {
+        return createErrorResponse(
+          new Error(
+            "Invalid notes parameter: expected array or valid JSON string",
+          ),
+          { hint: "Pass notes as an array, not a string" },
+        );
+      }
+      if (!Array.isArray(parsedNotes)) {
+        return createErrorResponse(
+          new Error("Invalid notes parameter: parsed value is not an array"),
+          { hint: "notes must be an array of note objects" },
+        );
+      }
+    } else {
+      parsedNotes = notes;
+    }
+
     try {
-      this.logger.log(`Adding ${notes.length} note(s) in batch`);
+      this.logger.log(`Adding ${parsedNotes.length} note(s) in batch`);
       await context.reportProgress({ progress: 10, total: 100 });
 
       // Step 1: Fetch model field names for all unique models to identify primary fields
-      const uniqueModels = [...new Set(notes.map((n) => n.modelName))];
+      const uniqueModels = [...new Set(parsedNotes.map((n) => n.modelName))];
       const modelFieldsMap = new Map<string, string[]>();
 
       for (const modelName of uniqueModels) {
@@ -126,8 +170,8 @@ export class AddNotesTool {
 
       // Step 2: Validate only the primary (first) field is not empty for each note
       // AnkiConnect requires the first field to have content for duplicate checking
-      for (let i = 0; i < notes.length; i++) {
-        const note = notes[i];
+      for (let i = 0; i < parsedNotes.length; i++) {
+        const note = parsedNotes[i];
         const modelFields = modelFieldsMap.get(note.modelName)!;
         const primaryField = modelFields[0];
         const primaryValue = note.fields[primaryField];
@@ -150,8 +194,8 @@ export class AddNotesTool {
 
       await context.reportProgress({ progress: 25, total: 100 });
 
-      // Step 2: Build AnkiConnect params for each note
-      const ankiNotes = notes.map((note) => {
+      // Step 3: Build AnkiConnect params for each note
+      const ankiNotes = parsedNotes.map((note) => {
         const noteParams: Record<string, unknown> = {
           deckName: note.deckName,
           modelName: note.modelName,
@@ -197,7 +241,7 @@ export class AddNotesTool {
 
       // Step 4: Parse results and build detailed response
       const results: NoteResult[] = noteIds.map((noteId, index) => {
-        const note = notes[index];
+        const note = parsedNotes[index];
         if (noteId !== null) {
           return {
             index,
@@ -230,9 +274,9 @@ export class AddNotesTool {
       // Step 5: Build response based on outcome
       if (successCount === 0) {
         // All failed
-        this.logger.warn(`All ${notes.length} notes failed to create`);
+        this.logger.warn(`All ${parsedNotes.length} notes failed to create`);
         return createErrorResponse(new Error("All notes failed to create"), {
-          totalRequested: notes.length,
+          totalRequested: parsedNotes.length,
           successCount: 0,
           failedCount,
           results,
@@ -244,14 +288,14 @@ export class AddNotesTool {
       const createdNoteIds = successfulNotes.map((r) => r.noteId);
       const message =
         failedCount > 0
-          ? `Created ${successCount} of ${notes.length} notes. ${failedCount} note(s) failed.`
+          ? `Created ${successCount} of ${parsedNotes.length} notes. ${failedCount} note(s) failed.`
           : `Successfully created all ${successCount} notes`;
 
       this.logger.log(message);
 
       return createSuccessResponse({
         success: true,
-        totalRequested: notes.length,
+        totalRequested: parsedNotes.length,
         successCount,
         failedCount,
         noteIds: createdNoteIds,
@@ -267,20 +311,22 @@ export class AddNotesTool {
       if (error instanceof Error) {
         if (error.message.includes("model")) {
           return createErrorResponse(error, {
-            totalRequested: notes.length,
+            totalRequested: parsedNotes.length,
             hint: "One or more models not found. Use modelNames tool to see available models.",
           });
         }
         if (error.message.includes("deck")) {
           return createErrorResponse(error, {
-            totalRequested: notes.length,
+            totalRequested: parsedNotes.length,
             hint: "One or more decks not found. Use list_decks tool to see available decks or createDeck to create new ones.",
           });
         }
         if (error.message.includes("field")) {
-          const uniqueModels = [...new Set(notes.map((n) => n.modelName))];
+          const uniqueModels = [
+            ...new Set(parsedNotes.map((n) => n.modelName)),
+          ];
           return createErrorResponse(error, {
-            totalRequested: notes.length,
+            totalRequested: parsedNotes.length,
             modelsUsed: uniqueModels,
             hint: "Field name mismatch. Use modelFieldNames tool to see required fields for each model. Common models: Basic (Front, Back), Cloze (Text, Back Extra), Basic (and reversed card) (Front, Back).",
           });
@@ -288,7 +334,7 @@ export class AddNotesTool {
       }
 
       return createErrorResponse(error, {
-        totalRequested: notes.length,
+        totalRequested: parsedNotes.length,
         hint: "Make sure Anki is running and all deck/model names are correct",
       });
     }
