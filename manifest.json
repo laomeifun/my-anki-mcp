@@ -49,6 +49,10 @@
       "description": "Create new notes with specified fields and tags. IMPORTANT: Only create notes that were explicitly requested by the user"
     },
     {
+      "name": "addNotes",
+      "description": "Add multiple notes to Anki in a single batch operation (max 25). Returns detailed results showing which notes succeeded or failed. IMPORTANT: Only create notes that were explicitly requested by the user"
+    },
+    {
       "name": "findNotes",
       "description": "Search for notes using Anki query syntax (deck:, tag:, is:due, etc.)"
     },
@@ -89,50 +93,6 @@
       "description": "Update the CSS styling for an existing note type. Changes apply to all cards using this model. Useful for adding RTL support or modifying appearance."
     },
     {
-      "name": "guiBrowse",
-      "description": "Open Anki Card Browser and search for cards. For note editing/creation workflows only, NOT for review sessions"
-    },
-    {
-      "name": "guiSelectCard",
-      "description": "Select a specific card in the Card Browser. For note editing/creation workflows only"
-    },
-    {
-      "name": "guiSelectedNotes",
-      "description": "Get IDs of notes currently selected in Card Browser. For note editing/creation workflows only"
-    },
-    {
-      "name": "guiAddCards",
-      "description": "Open Add Cards dialog with preset note details. For note editing/creation workflows only"
-    },
-    {
-      "name": "guiEditNote",
-      "description": "Open note editor for a specific note. For note editing/creation workflows only"
-    },
-    {
-      "name": "guiDeckOverview",
-      "description": "Open Deck Overview dialog for a specific deck. For deck management workflows only"
-    },
-    {
-      "name": "guiDeckBrowser",
-      "description": "Open Deck Browser dialog. For deck management workflows only"
-    },
-    {
-      "name": "guiCurrentCard",
-      "description": "Get current card info in review mode. For note editing/creation workflows only, NOT for review sessions"
-    },
-    {
-      "name": "guiShowQuestion",
-      "description": "Show question side of current card. For note editing/creation workflows only, NOT for review sessions"
-    },
-    {
-      "name": "guiShowAnswer",
-      "description": "Show answer side of current card. For note editing/creation workflows only, NOT for review sessions"
-    },
-    {
-      "name": "guiUndo",
-      "description": "Undo the last action in Anki. For note editing/creation workflows only"
-    },
-    {
       "name": "mediaActions",
       "description": "Manage Anki media files (audio/images). Actions: storeMediaFile, retrieveMediaFile, getMediaFilesNames, deleteMediaFile. Perfect for workflows like ElevenLabs TTS → Anki audio flashcards"
     },
@@ -147,9 +107,7 @@
     "entry_point": "dist/main-stdio.js",
     "mcp_config": {
       "command": "node",
-      "args": [
-        "${__dirname}/dist/main-stdio.js"
-      ],
+      "args": ["${__dirname}/dist/main-stdio.js"],
       "env": {
         "ANKI_CONNECT_URL": "${user_config.anki_connect_url}",
         "ANKI_CONNECT_API_VERSION": "${user_config.anki_connect_api_version}",
@@ -189,11 +147,7 @@
     }
   },
   "compatibility": {
-    "platforms": [
-      "darwin",
-      "linux",
-      "win32"
-    ],
+    "platforms": ["darwin", "linux", "win32"],
     "runtimes": {
       "node": ">=20"
     }

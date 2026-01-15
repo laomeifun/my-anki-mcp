@@ -45,8 +45,8 @@ describe("AppModule", () => {
     it("should include MCP primitives modules", () => {
       const dynamicModule = AppModule.forStdio();
 
-      // Should have 4 imports: ConfigModule, McpModule, Essential, GUI
-      expect(dynamicModule.imports?.length).toBe(4);
+      // Should have 3 imports: ConfigModule, McpModule, Essential
+      expect(dynamicModule.imports?.length).toBe(3);
     });
 
     it("should register providers", () => {
@@ -99,8 +99,8 @@ describe("AppModule", () => {
     it("should include MCP primitives modules", () => {
       const dynamicModule = AppModule.forHttp();
 
-      // Should have 4 imports: ConfigModule, McpModule, Essential, GUI
-      expect(dynamicModule.imports?.length).toBe(4);
+      // Should have 3 imports: ConfigModule, McpModule, Essential
+      expect(dynamicModule.imports?.length).toBe(3);
     });
 
     it("should register providers", () => {
@@ -142,18 +142,9 @@ describe("AppModule", () => {
       const stdioModule = AppModule.forStdio();
       const httpModule = AppModule.forHttp();
 
-      // Both configurations should import the same primitives
-      expect(stdioModule.imports?.length).toBe(4);
-      expect(httpModule.imports?.length).toBe(4);
-    });
-
-    it("should both include GUI primitives", () => {
-      const stdioModule = AppModule.forStdio();
-      const httpModule = AppModule.forHttp();
-
-      // Both should have 4 imports (Config, MCP, Essential, GUI)
-      expect(stdioModule.imports?.length).toBe(4);
-      expect(httpModule.imports?.length).toBe(4);
+      // Both configurations should import the same primitives (Config, MCP, Essential)
+      expect(stdioModule.imports?.length).toBe(3);
+      expect(httpModule.imports?.length).toBe(3);
     });
   });
 

@@ -6,10 +6,6 @@ import {
   ANKI_CONFIG,
   ESSENTIAL_MCP_TOOLS,
 } from "./mcp/primitives/essential";
-import {
-  McpPrimitivesAnkiGuiModule,
-  GUI_MCP_TOOLS,
-} from "./mcp/primitives/gui";
 import { AnkiConfigService } from "./anki-config.service";
 
 @Module({})
@@ -42,17 +38,9 @@ export class AppModule {
             useClass: AnkiConfigService,
           },
         }),
-
-        // Import GUI primitives with config
-        McpPrimitivesAnkiGuiModule.forRoot({
-          ankiConfigProvider: {
-            provide: ANKI_CONFIG,
-            useClass: AnkiConfigService,
-          },
-        }),
       ],
       // MCP-Nest 1.9.0+ requires tools to be explicitly listed in the module where McpModule.forRoot() is configured
-      providers: [AnkiConfigService, ...ESSENTIAL_MCP_TOOLS, ...GUI_MCP_TOOLS],
+      providers: [AnkiConfigService, ...ESSENTIAL_MCP_TOOLS],
     };
   }
 
@@ -85,17 +73,9 @@ export class AppModule {
             useClass: AnkiConfigService,
           },
         }),
-
-        // Import GUI primitives with config
-        McpPrimitivesAnkiGuiModule.forRoot({
-          ankiConfigProvider: {
-            provide: ANKI_CONFIG,
-            useClass: AnkiConfigService,
-          },
-        }),
       ],
       // MCP-Nest 1.9.0+ requires tools to be explicitly listed in the module where McpModule.forRoot() is configured
-      providers: [AnkiConfigService, ...ESSENTIAL_MCP_TOOLS, ...GUI_MCP_TOOLS],
+      providers: [AnkiConfigService, ...ESSENTIAL_MCP_TOOLS],
     };
   }
 }
