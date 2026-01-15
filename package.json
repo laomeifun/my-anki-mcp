@@ -1,8 +1,8 @@
 {
-  "name": "@ankimcp/anki-mcp-server",
+  "name": "@laomeifun/my-anki-mcp",
   "version": "0.11.0",
   "description": "Model Context Protocol server for Anki - enables AI assistants to interact with your Anki flashcards",
-  "author": "Anatoly Tarnavsky",
+  "author": "laomeifun",
   "private": false,
   "license": "AGPL-3.0-or-later",
   "main": "dist/main-http.js",
@@ -45,8 +45,8 @@
     "mcpb:clean": "rm -f *.mcpb",
     "mcpb:bundle": "npm run sync-version && npm run mcpb:clean && npm run build && mcpb pack . \"anki-mcp-server-$npm_package_version.mcpb\" && mcpb clean \"anki-mcp-server-$npm_package_version.mcpb\"",
     "pack:local": "rm -f *.tgz && npm run build && npm pack",
-    "install:local": "npm install -g ./ankimcp-anki-mcp-server-*.tgz",
-    "uninstall:local": "npm uninstall -g @ankimcp/anki-mcp-server",
+    "install:local": "npm install -g ./laomeifun-my-anki-mcp-*.tgz",
+    "uninstall:local": "npm uninstall -g @laomeifun/my-anki-mcp",
     "prepare": "husky"
   },
   "dependencies": {
@@ -156,12 +156,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/ankimcp/anki-mcp-server.git"
+    "url": "https://github.com/laomeifun/my-anki-mcp.git"
   },
   "bugs": {
-    "url": "https://github.com/ankimcp/anki-mcp-server/issues"
+    "url": "https://github.com/laomeifun/my-anki-mcp/issues"
   },
-  "homepage": "https://ankimcp.ai",
+  "homepage": "https://github.com/laomeifun/my-anki-mcp",
   "keywords": [
     "mcp",
     "model-context-protocol",

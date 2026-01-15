@@ -1,18 +1,8 @@
-# Anki MCP Server
+# My Anki MCP
 
-> **⚠️ IMPORTANT: Project Renamed (v0.8.2+)**
->
-> This project has been renamed and moved:
-> - **Package**: `anki-mcp-http` → `@ankimcp/anki-mcp-server`
-> - **Commands**: `anki-mcp-http` → `ankimcp` or `anki-mcp-server`
-> - **Repository**: `anki-mcp/anki-mcp-desktop` → `ankimcp/anki-mcp-server`
->
-> The old `anki-mcp-http` package continues to be published for backward compatibility but is deprecated. Please migrate to the new package.
->
-> **[Read more about this change →](https://ankimcp.ai/blog/organization-and-naming-update/)**
+A Model Context Protocol (MCP) server for Anki - enables AI assistants to interact with your Anki flashcards.
 
-[![Tests](https://github.com/ankimcp/anki-mcp-server/actions/workflows/test.yml/badge.svg)](https://github.com/ankimcp/anki-mcp-server/actions/workflows/test.yml)
-[![npm version](https://badge.fury.io/js/@ankimcp%2Fanki-mcp-server.svg)](https://www.npmjs.com/package/@ankimcp/anki-mcp-server)
+[![npm version](https://badge.fury.io/js/@laomeifun%2Fmy-anki-mcp.svg)](https://www.npmjs.com/package/@laomeifun/my-anki-mcp)
 
 <div align="center">
   <img src="./docs/images/ankimcp.png" alt="Anki + MCP Integration" width="600" />
@@ -24,13 +14,7 @@
 
 A Model Context Protocol (MCP) server that enables AI assistants to interact with Anki, the spaced repetition flashcard application.
 
-Transform your Anki experience with natural language interaction - like having a private tutor. The AI assistant doesn't just present questions and answers; it can explain concepts, make the learning process more engaging and human-like, provide context, and adapt to your learning style. It can create and edit notes on the fly, turning your study sessions into dynamic conversations. More features coming soon!
-
-## Examples and Tutorials
-
-For comprehensive guides, real-world examples, and step-by-step tutorials on using this MCP server with Claude Desktop, visit:
-
-**[ankimcp.ai](https://ankimcp.ai)** - Complete documentation with practical examples and use cases
+Transform your Anki experience with natural language interaction.
 
 ## Available Tools
 
@@ -86,7 +70,7 @@ This server works in two modes:
 
 The easiest way to install this MCP server for Claude Desktop:
 
-1. Download the latest `.mcpb` bundle from the [Releases](https://github.com/ankimcp/anki-mcp-server/releases) page
+1. Download the latest `.mcpb` bundle from the [Releases](https://github.com/laomeifun/my-anki-mcp/releases) page
 2. In Claude Desktop, install the extension:
    - **Method 1**: Go to Settings → Extensions, then drag and drop the `.mcpb` file
    - **Method 2**: Go to Settings → Developer → Extensions → Install Extension, then select the `.mcpb` file
@@ -114,7 +98,7 @@ Want to use Anki with MCP clients like **Cursor IDE**, **Cline**, or **Zed Edito
   "mcpServers": {
     "anki-mcp": {
       "command": "npx",
-      "args": ["-y", "@ankimcp/anki-mcp-server", "--stdio"],
+      "args": ["-y", "@laomeifun/my-anki-mcp", "--stdio"],
       "env": {
         "ANKI_CONNECT_URL": "http://localhost:8765"
       }
@@ -127,7 +111,7 @@ Want to use Anki with MCP clients like **Cursor IDE**, **Cline**, or **Zed Edito
 
 First, install globally:
 ```bash
-npm install -g @ankimcp/anki-mcp-server
+npm install -g @laomeifun/my-anki-mcp
 ```
 
 Then configure:
@@ -170,21 +154,21 @@ Want to use Anki with ChatGPT or Claude.ai in your browser? This mode lets you c
 
 ```bash
 # Quick start
-npx @ankimcp/anki-mcp-server
+npx @laomeifun/my-anki-mcp
 
 # With ngrok tunnel (recommended for web-based AI)
-npx @ankimcp/anki-mcp-server --ngrok
+npx @laomeifun/my-anki-mcp --ngrok
 
 # With custom options
-npx @ankimcp/anki-mcp-server --port 8080 --host 0.0.0.0
-npx @ankimcp/anki-mcp-server --anki-connect http://localhost:8765
+npx @laomeifun/my-anki-mcp --port 8080 --host 0.0.0.0
+npx @laomeifun/my-anki-mcp --anki-connect http://localhost:8765
 ```
 
 **Method 2: Using global installation**
 
 ```bash
 # Install once
-npm install -g @ankimcp/anki-mcp-server
+npm install -g @laomeifun/my-anki-mcp
 
 # Run the server
 ankimcp
@@ -219,13 +203,13 @@ Options:
   --help                         Show help message
 
 Usage with npx (no installation needed):
-  npx @ankimcp/anki-mcp-server                        # HTTP mode
-  npx @ankimcp/anki-mcp-server --port 8080            # Custom port
-  npx @ankimcp/anki-mcp-server --stdio                # STDIO mode
-  npx @ankimcp/anki-mcp-server --ngrok                # HTTP mode with ngrok tunnel
+  npx @laomeifun/my-anki-mcp                        # HTTP mode
+  npx @laomeifun/my-anki-mcp --port 8080            # Custom port
+  npx @laomeifun/my-anki-mcp --stdio                # STDIO mode
+  npx @laomeifun/my-anki-mcp --ngrok                # HTTP mode with ngrok tunnel
 
 Usage with global installation:
-  npm install -g @ankimcp/anki-mcp-server             # Install once
+  npm install -g @laomeifun/my-anki-mcp             # Install once
   ankimcp                                             # HTTP mode
   ankimcp --port 8080                                 # Custom port
   ankimcp --stdio                                     # STDIO mode
@@ -376,18 +360,12 @@ The `deleteNotes` tool requires explicit confirmation (`confirmDeletion: true`) 
 
 ## Known Issues
 
-For a comprehensive list of known issues and limitations, please visit our documentation:
-
-**[Known Issues Documentation](https://ankimcp.ai/docs/known-issues/)**
-
 ### Critical Limitations
 
 #### Note Updates Fail When Viewed in Browser
 ⚠️ **IMPORTANT**: When updating notes using `updateNoteFields`, the update will silently fail if the note is currently being viewed in Anki's browser window. This is an upstream AnkiConnect limitation.
 
 **Workaround**: Always close the browser or navigate to a different note before updating.
-
-For more details and other known issues, see the [full documentation](https://ankimcp.ai/docs/known-issues/).
 
 ## Development
 
@@ -668,10 +646,10 @@ Test the npm package locally before publishing:
 
 ```bash
 # 1. Create local package
-npm run pack:local         # Builds and creates @ankimcp/anki-mcp-server-*.tgz
+npm run pack:local         # Builds and creates @laomeifun/my-anki-mcp-*.tgz
 
 # 2. Install globally from local package
-npm run install:local      # Installs from ./@ankimcp/anki-mcp-server-*.tgz
+npm run install:local      # Installs from ./@laomeifun/my-anki-mcp-*.tgz
 
 # 3. Test the command
 ankimcp                    # Runs HTTP server on port 3000
@@ -682,7 +660,7 @@ npm run uninstall:local    # Removes global installation
 
 **How it works:**
 - `npm pack` creates a `.tgz` file identical to what npm publish would create
-- Installing from `.tgz` simulates what users get from `npm install -g ankimcp`
+- Installing from `.tgz` simulates what users get from `npm install -g @laomeifun/my-anki-mcp`
 - This lets you test the full user experience before publishing to npm
 
 ### Testing Commands

@@ -1,16 +1,17 @@
-name: Publish to npm (@ankimcp/anki-mcp-server)
+name: Publish to npm
 
 on:
   push:
     tags:
       - 'v*.*.*'
-  workflow_dispatch:  # Allows manual triggering from GitHub UI
+  workflow_dispatch:
 
 jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      id-token: write  # Required for OIDC authentication
 
     steps:
       - uses: actions/checkout@v4
@@ -18,17 +19,17 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
           registry-url: 'https://registry.npmjs.org'
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Build
         run: npm run build
 
-      - name: Publish to npm as @ankimcp/anki-mcp-server
-        run: npm publish --access public
+      - name: Publish to npm
+        run: npm publish --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
