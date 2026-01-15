@@ -68,6 +68,7 @@ interface NoteResult {
   noteId: number | null;
   deckName: string;
   modelName: string;
+  providedFields?: string[];
   error?: string;
 }
 
@@ -190,8 +191,9 @@ export class AddNotesTool {
             noteId: null,
             deckName: note.deckName,
             modelName: note.modelName,
+            providedFields: Object.keys(note.fields),
             error:
-              "Failed to create note (likely duplicate or invalid model/deck)",
+              "Failed to create note. Possible causes: duplicate note, invalid field names for this model, or missing required fields. Use modelFieldNames to verify correct field names.",
           };
         }
       });
@@ -251,6 +253,14 @@ export class AddNotesTool {
           return createErrorResponse(error, {
             totalRequested: notes.length,
             hint: "One or more decks not found. Use list_decks tool to see available decks or createDeck to create new ones.",
+          });
+        }
+        if (error.message.includes("field")) {
+          const uniqueModels = [...new Set(notes.map((n) => n.modelName))];
+          return createErrorResponse(error, {
+            totalRequested: notes.length,
+            modelsUsed: uniqueModels,
+            hint: "Field name mismatch. Use modelFieldNames tool to see required fields for each model. Common models: Basic (Front, Back), Cloze (Text, Back Extra), Basic (and reversed card) (Front, Back).",
           });
         }
       }

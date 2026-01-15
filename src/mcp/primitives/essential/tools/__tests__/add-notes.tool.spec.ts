@@ -713,4 +713,204 @@ describe("AddNotesTool", () => {
       expect(result.noteIds).toHaveLength(25);
     });
   });
+
+  describe("Multi-Field Models", () => {
+    it("should handle Cloze model with Text and Back Extra fields", async () => {
+      const notes = [
+        {
+          deckName: "Default",
+          modelName: "Cloze",
+          fields: {
+            Text: "The {{c1::capital}} of France is {{c2::Paris}}",
+            "Back Extra": "Geography fact",
+          },
+        },
+      ];
+      ankiClient.invoke.mockResolvedValueOnce([123]);
+
+      const rawResult = await tool.addNotes({ notes }, mockContext);
+      const result = parseToolResult(rawResult);
+
+      expect(result.success).toBe(true);
+      expect(ankiClient.invoke).toHaveBeenCalledWith("addNotes", {
+        notes: [
+          expect.objectContaining({
+            modelName: "Cloze",
+            fields: {
+              Text: "The {{c1::capital}} of France is {{c2::Paris}}",
+              "Back Extra": "Geography fact",
+            },
+          }),
+        ],
+      });
+    });
+
+    it("should handle Basic (and reversed card) model", async () => {
+      const notes = [
+        {
+          deckName: "Default",
+          modelName: "Basic (and reversed card)",
+          fields: {
+            Front: "Hello",
+            Back: "你好",
+          },
+        },
+      ];
+      ankiClient.invoke.mockResolvedValueOnce([456]);
+
+      const rawResult = await tool.addNotes({ notes }, mockContext);
+      const result = parseToolResult(rawResult);
+
+      expect(result.success).toBe(true);
+      expect(result.noteIds).toEqual([456]);
+    });
+
+    it("should handle custom model with 5+ fields", async () => {
+      const notes = [
+        {
+          deckName: "Languages",
+          modelName: "Vocabulary Advanced",
+          fields: {
+            Word: "ephemeral",
+            Definition: "lasting for a very short time",
+            Example: "The ephemeral beauty of cherry blossoms",
+            Pronunciation: "/ɪˈfem(ə)rəl/",
+            Etymology: "From Greek ephēmeros",
+            Notes: "Often used in poetry",
+          },
+        },
+      ];
+      ankiClient.invoke.mockResolvedValueOnce([789]);
+
+      const rawResult = await tool.addNotes({ notes }, mockContext);
+      const result = parseToolResult(rawResult);
+
+      expect(result.success).toBe(true);
+      expect(ankiClient.invoke).toHaveBeenCalledWith("addNotes", {
+        notes: [
+          expect.objectContaining({
+            fields: expect.objectContaining({
+              Word: "ephemeral",
+              Definition: "lasting for a very short time",
+              Etymology: "From Greek ephēmeros",
+            }),
+          }),
+        ],
+      });
+    });
+
+    it("should handle mixed models with different field counts in same batch", async () => {
+      const notes = [
+        {
+          deckName: "Default",
+          modelName: "Basic",
+          fields: { Front: "Q1", Back: "A1" },
+        },
+        {
+          deckName: "Default",
+          modelName: "Cloze",
+          fields: { Text: "{{c1::Answer}}", "Back Extra": "Hint" },
+        },
+        {
+          deckName: "Default",
+          modelName: "Basic",
+          fields: { Front: "Q2", Back: "A2" },
+        },
+      ];
+      ankiClient.invoke.mockResolvedValueOnce([1, 2, 3]);
+
+      const rawResult = await tool.addNotes({ notes }, mockContext);
+      const result = parseToolResult(rawResult);
+
+      expect(result.success).toBe(true);
+      expect(result.successCount).toBe(3);
+    });
+
+    it("should handle fields with special characters in names", async () => {
+      const notes = [
+        {
+          deckName: "Default",
+          modelName: "Custom Model",
+          fields: {
+            "Field-With-Dashes": "value1",
+            Field_With_Underscores: "value2",
+            "Field With Spaces": "value3",
+          },
+        },
+      ];
+      ankiClient.invoke.mockResolvedValueOnce([999]);
+
+      const rawResult = await tool.addNotes({ notes }, mockContext);
+      const result = parseToolResult(rawResult);
+
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe("Field Mismatch Handling", () => {
+    it("should handle field name mismatch error with helpful hint", async () => {
+      const notes = [
+        makeNote({
+          modelName: "Cloze",
+          fields: { Front: "wrong", Back: "fields" },
+        }),
+      ];
+      ankiClient.invoke.mockRejectedValueOnce(
+        new AnkiConnectError("field 'Front' not found", "addNotes"),
+      );
+
+      const rawResult = await tool.addNotes({ notes }, mockContext);
+      const result = parseToolResult(rawResult);
+
+      expect(result.success).toBe(false);
+      expect(result.hint).toContain("Field name mismatch");
+      expect(result.hint).toContain("modelFieldNames");
+      expect(result.modelsUsed).toContain("Cloze");
+    });
+
+    it("should include providedFields in failed note results", async () => {
+      const notes = [
+        {
+          deckName: "Default",
+          modelName: "Basic",
+          fields: { Front: "Q", Back: "A" },
+        },
+        {
+          deckName: "Default",
+          modelName: "Cloze",
+          fields: { WrongField: "value", AnotherWrong: "value2" },
+        },
+      ];
+      ankiClient.invoke.mockResolvedValueOnce([111, null]);
+
+      const rawResult = await tool.addNotes({ notes }, mockContext);
+      const result = parseToolResult(rawResult);
+
+      expect(result.successCount).toBe(1);
+      expect(result.failedCount).toBe(1);
+      expect(result.results[1].providedFields).toEqual([
+        "WrongField",
+        "AnotherWrong",
+      ]);
+      expect(result.results[1].error).toContain("modelFieldNames");
+    });
+
+    it("should list all unique models when field error occurs", async () => {
+      const notes = [
+        makeNote({ modelName: "Basic" }),
+        makeNote({ modelName: "Cloze" }),
+        makeNote({ modelName: "Basic" }),
+      ];
+      ankiClient.invoke.mockRejectedValueOnce(
+        new AnkiConnectError("field error", "addNotes"),
+      );
+
+      const rawResult = await tool.addNotes({ notes }, mockContext);
+      const result = parseToolResult(rawResult);
+
+      expect(result.modelsUsed).toHaveLength(2);
+      expect(result.modelsUsed).toContain("Basic");
+      expect(result.modelsUsed).toContain("Cloze");
+    });
+  });
 });
