@@ -20,43 +20,30 @@ export class CreateDeckTool {
   @Tool({
     name: "create_deck",
     description:
-      'Create a new empty Anki deck. Supports parent::child structure (e.g., "Japanese::Tokyo" creates parent deck "Japanese" and child deck "Tokyo"). Maximum 2 levels of nesting allowed. Will not overwrite existing decks. ' +
+      'Create a new empty Anki deck. Supports nested structure using "::" separator (e.g., "Languages::Japanese::JLPT::N5"). All parent decks are created automatically. Will not overwrite existing decks. ' +
       "IMPORTANT: This tool ONLY creates an empty deck. DO NOT add cards or notes after creating a deck unless the user EXPLICITLY asks to add them. Wait for user instructions before adding any content.",
     parameters: z.object({
       deck_name: z
         .string()
         .min(1)
         .describe(
-          'The name of the deck to create. Use "::" for parent::child structure (max 2 levels)',
+          'The name of the deck to create. Use "::" for nested structure (e.g., "Parent::Child::Grandchild")',
         )
         .refine(
           (name) => {
             const parts = name.split("::");
-            return parts.length <= 2;
+            return parts.every((part) => part.trim() !== "");
           },
           {
-            message:
-              "Deck name can have maximum 2 levels (parent::child). More than 2 levels not permitted.",
+            message: "Deck name parts cannot be empty",
           },
         ),
     }),
   })
   async createDeck({ deck_name }: { deck_name: string }, context: Context) {
     try {
-      // Validate deck name doesn't have more than 2 levels
-      const parts = deck_name.split("::");
-      if (parts.length > 2) {
-        return createErrorResponse(
-          new Error("Deck name can have maximum 2 levels (parent::child)"),
-          {
-            deckName: deck_name,
-            levels: parts.length,
-            maxLevels: 2,
-          },
-        );
-      }
-
       // Check for empty parts
+      const parts = deck_name.split("::");
       if (parts.some((part) => part.trim() === "")) {
         return createErrorResponse(
           new Error("Deck name parts cannot be empty"),
@@ -113,11 +100,11 @@ export class CreateDeckTool {
         created: true,
       };
 
-      // If it's a parent::child structure, note both decks were created
-      if (parts.length === 2) {
-        response.parentDeck = parts[0];
-        response.childDeck = parts[1];
-        response.message = `Successfully created parent deck "${parts[0]}" and child deck "${parts[1]}"`;
+      // If it's a nested structure, note the hierarchy
+      if (parts.length > 1) {
+        response.hierarchy = parts;
+        response.depth = parts.length;
+        response.message = `Successfully created deck "${deck_name}" (${parts.length} levels)`;
       }
 
       return createSuccessResponse(response);

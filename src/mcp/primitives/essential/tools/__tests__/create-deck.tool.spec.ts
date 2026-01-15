@@ -122,14 +122,16 @@ describe("CreateDeckTool", () => {
       expect(result.success).toBe(true);
       expect(result.deckId).toBe(deckId);
       expect(result.deckName).toBe(deckName);
-      expect(result.parentDeck).toBe("Languages");
-      expect(result.childDeck).toBe("Spanish");
-      expect(result.message).toContain('parent deck "Languages"');
-      expect(result.message).toContain('child deck "Spanish"');
+      expect(result.hierarchy).toEqual(["Languages", "Spanish"]);
+      expect(result.depth).toBe(2);
+      expect(result.message).toContain("2 levels");
     });
 
-    it("should reject parent::child::grandchild deck structure (more than 2 levels)", async () => {
+    it("should create deeply nested deck (3+ levels)", async () => {
       const deckName = "Languages::Spanish::Vocabulary";
+      const deckId = 1651445861974;
+
+      ankiClient.invoke.mockResolvedValueOnce(deckId);
 
       const rawResult = await tool.createDeck(
         { deck_name: deckName },
@@ -137,13 +139,17 @@ describe("CreateDeckTool", () => {
       );
       const result = parseToolResult(rawResult);
 
-      expect(result.success).toBe(false);
-      expect(result.error).toContain("maximum 2 levels");
-      expect(ankiClient.invoke).not.toHaveBeenCalled();
+      expect(result.success).toBe(true);
+      expect(result.deckId).toBe(deckId);
+      expect(result.hierarchy).toEqual(["Languages", "Spanish", "Vocabulary"]);
+      expect(result.depth).toBe(3);
     });
 
-    it("should reject deeply nested deck (4+ levels)", async () => {
+    it("should create very deeply nested deck (5 levels)", async () => {
       const deckName = "School::Year1::Math::Algebra::Equations";
+      const deckId = 1651445861975;
+
+      ankiClient.invoke.mockResolvedValueOnce(deckId);
 
       const rawResult = await tool.createDeck(
         { deck_name: deckName },
@@ -151,9 +157,16 @@ describe("CreateDeckTool", () => {
       );
       const result = parseToolResult(rawResult);
 
-      expect(result.success).toBe(false);
-      expect(result.error).toContain("maximum 2 levels");
-      expect(ankiClient.invoke).not.toHaveBeenCalled();
+      expect(result.success).toBe(true);
+      expect(result.deckId).toBe(deckId);
+      expect(result.hierarchy).toEqual([
+        "School",
+        "Year1",
+        "Math",
+        "Algebra",
+        "Equations",
+      ]);
+      expect(result.depth).toBe(5);
     });
 
     it("should create parent deck if parent doesn't exist", async () => {
@@ -169,8 +182,8 @@ describe("CreateDeckTool", () => {
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(true);
-      expect(result.parentDeck).toBe("NewParent");
-      expect(result.childDeck).toBe("NewChild");
+      expect(result.hierarchy).toEqual(["NewParent", "NewChild"]);
+      expect(result.depth).toBe(2);
       expect(result.created).toBe(true);
     });
   });
@@ -201,8 +214,6 @@ describe("CreateDeckTool", () => {
     });
 
     it("should reject deck name with empty parts in hierarchy", async () => {
-      // "Parent::::Child" splits into ["Parent", "", "", "Child"] = 4 parts
-      // Will fail on "maximum 2 levels" check first (before empty parts check)
       const rawResult = await tool.createDeck(
         { deck_name: "Parent::::Child" },
         mockContext,
@@ -210,7 +221,7 @@ describe("CreateDeckTool", () => {
       const result = parseToolResult(rawResult);
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain("maximum 2 levels");
+      expect(result.error).toContain("cannot be empty");
       expect(ankiClient.invoke).not.toHaveBeenCalled();
     });
 
@@ -357,8 +368,11 @@ describe("CreateDeckTool", () => {
       expect(result.created).toBe(true);
     });
 
-    it("should reject deck name with 3 levels (mixed separators)", async () => {
+    it("should create 3-level nested deck", async () => {
       const deckName = "Parent::Child::Grandchild";
+      const deckId = 1651445861990;
+
+      ankiClient.invoke.mockResolvedValueOnce(deckId);
 
       const rawResult = await tool.createDeck(
         { deck_name: deckName },
@@ -366,8 +380,9 @@ describe("CreateDeckTool", () => {
       );
       const result = parseToolResult(rawResult);
 
-      expect(result.success).toBe(false);
-      expect(result.error).toContain("maximum 2 levels");
+      expect(result.success).toBe(true);
+      expect(result.hierarchy).toEqual(["Parent", "Child", "Grandchild"]);
+      expect(result.depth).toBe(3);
     });
 
     it("should handle null deck ID from AnkiConnect (deck exists)", async () => {
@@ -491,7 +506,7 @@ describe("CreateDeckTool", () => {
       expect(result.hint).toContain("Make sure Anki is running");
     });
 
-    it("should include parent/child info for parent::child decks", async () => {
+    it("should include hierarchy info for nested decks", async () => {
       const deckName = "Parent::Child";
       const deckId = 1651445861981;
 
@@ -503,10 +518,9 @@ describe("CreateDeckTool", () => {
       );
       const result = parseToolResult(rawResult);
 
-      expect(result.message).toContain('parent deck "Parent"');
-      expect(result.message).toContain('child deck "Child"');
-      expect(result.parentDeck).toBe("Parent");
-      expect(result.childDeck).toBe("Child");
+      expect(result.message).toContain("2 levels");
+      expect(result.hierarchy).toEqual(["Parent", "Child"]);
+      expect(result.depth).toBe(2);
     });
 
     it("should return simple message for simple decks", async () => {
@@ -524,8 +538,8 @@ describe("CreateDeckTool", () => {
       expect(result.message).toContain(
         `Successfully created deck "${deckName}"`,
       );
-      expect(result.parentDeck).toBeUndefined();
-      expect(result.childDeck).toBeUndefined();
+      expect(result.hierarchy).toBeUndefined();
+      expect(result.depth).toBeUndefined();
     });
   });
 });
