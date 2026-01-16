@@ -85,7 +85,8 @@ describe("UpdateNoteFieldsTool", () => {
       };
 
       ankiClient.invoke
-        .mockResolvedValueOnce([mockNotes.withHtml])
+        .mockResolvedValueOnce([mockNotes.spanish])
+        .mockResolvedValueOnce(["Front", "Back"])
         .mockResolvedValueOnce(null);
 
       // Act
