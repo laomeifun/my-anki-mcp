@@ -9,19 +9,28 @@ import {
   createErrorResponse,
 } from "@/mcp/utils/anki.utils";
 
-/**
- * Preprocess function to handle fields passed as JSON string (common MCP client bug)
- */
-function preprocessFieldsInput(val: unknown): unknown {
-  if (typeof val === "string") {
-    try {
-      return JSON.parse(val);
-    } catch {
-      return val;
-    }
-  }
-  return val;
-}
+const FieldsSchema = z
+  .union([
+    z.record(z.string(), z.string()),
+    z.string().transform((str) => {
+      try {
+        const parsed = JSON.parse(str);
+        if (
+          typeof parsed === "object" &&
+          parsed !== null &&
+          !Array.isArray(parsed)
+        ) {
+          return parsed as Record<string, string>;
+        }
+        throw new Error("Not an object");
+      } catch {
+        throw new Error("Invalid JSON string for fields");
+      }
+    }),
+  ])
+  .describe(
+    'Field values as key-value pairs (e.g., {"Front": "question", "Back": "answer"})',
+  );
 
 /**
  * Tool for adding new notes to Anki
@@ -42,14 +51,7 @@ export class AddNoteTool {
         .string()
         .min(1)
         .describe('The note type/model to use (e.g., "Basic", "Cloze")'),
-      fields: z.preprocess(
-        preprocessFieldsInput,
-        z
-          .record(z.string(), z.string())
-          .describe(
-            'Field values as key-value pairs (e.g., {"Front": "question", "Back": "answer"})',
-          ),
-      ),
+      fields: FieldsSchema,
       tags: z
         .array(z.string())
         .optional()
@@ -108,14 +110,10 @@ export class AddNoteTool {
     },
     context: Context,
   ) {
-    // Handle fields passed as JSON string (common MCP client bug)
     let parsedFields: Record<string, string>;
     if (typeof fields === "string") {
       try {
         parsedFields = JSON.parse(fields);
-        this.logger.warn(
-          "fields parameter passed as JSON string instead of object - auto-parsing",
-        );
       } catch {
         return createErrorResponse(
           new Error(

@@ -9,24 +9,6 @@ import {
   createErrorResponse,
 } from "@/mcp/utils/anki.utils";
 
-/**
- * Preprocess function to handle notes passed as JSON string (common MCP client bug)
- * Automatically parses string input to array for robustness
- */
-function preprocessNotesInput(val: unknown): unknown {
-  if (typeof val === "string") {
-    try {
-      return JSON.parse(val);
-    } catch {
-      return val;
-    }
-  }
-  return val;
-}
-
-/**
- * Schema for individual note input (matches addNote tool structure)
- */
 const NoteInputSchema = z.object({
   deckName: z.string().min(1).describe("The deck to add the note to"),
   modelName: z
@@ -74,6 +56,25 @@ const NoteInputSchema = z.object({
 
 type NoteInput = z.infer<typeof NoteInputSchema>;
 
+const NotesArraySchema = z
+  .union([
+    z.array(NoteInputSchema).min(1).max(25),
+    z.string().transform((str) => {
+      try {
+        const parsed = JSON.parse(str);
+        if (Array.isArray(parsed)) {
+          return parsed as NoteInput[];
+        }
+        throw new Error("Not an array");
+      } catch {
+        throw new Error("Invalid JSON string for notes array");
+      }
+    }),
+  ])
+  .describe(
+    "Array of notes to add (1-25 notes). Each note requires deckName, modelName, and fields.",
+  );
+
 /**
  * Result for each note in the batch
  */
@@ -104,27 +105,15 @@ export class AddNotesTool {
       "Use modelNames to see available note types and modelFieldNames to see required fields. " +
       "IMPORTANT: Only create notes that were explicitly requested by the user.",
     parameters: z.object({
-      notes: z.preprocess(
-        preprocessNotesInput,
-        z
-          .array(NoteInputSchema)
-          .min(1)
-          .max(25)
-          .describe(
-            "Array of notes to add (1-25 notes). Each note requires deckName, modelName, and fields.",
-          ),
-      ),
+      notes: NotesArraySchema,
     }),
   })
   async addNotes({ notes }: { notes: NoteInput[] | string }, context: Context) {
-    // Handle notes passed as JSON string (common MCP client bug)
+    // Fallback: handle notes passed as JSON string (for direct method calls or MCP clients)
     let parsedNotes: NoteInput[];
     if (typeof notes === "string") {
       try {
         parsedNotes = JSON.parse(notes);
-        this.logger.warn(
-          "notes parameter passed as JSON string instead of array - auto-parsing",
-        );
       } catch {
         return createErrorResponse(
           new Error(
