@@ -8,6 +8,7 @@ import {
   createErrorResponse,
 } from "@/mcp/utils/anki.utils";
 import type { CardTemplate } from "@/mcp/types/anki.types";
+import { jsonArraySchema } from "@/mcp/utils/schema.utils";
 
 /**
  * Tool for creating a new Anki model/note type
@@ -31,34 +32,33 @@ export class CreateModelTool {
         .describe(
           'Unique name for the new model (e.g., "Basic RTL", "Advanced Vocabulary")',
         ),
-      inOrderFields: z
-        .array(z.string().min(1))
-        .min(1)
-        .describe(
+      inOrderFields: jsonArraySchema(z.string().min(1), {
+        min: 1,
+        description:
           'Field names in order (e.g., ["Front", "Back"]). At least one field required.',
-        ),
-      cardTemplates: z
-        .array(
-          z.object({
-            Name: z.string().min(1).describe('Template name (e.g., "Card 1")'),
-            Front: z
-              .string()
-              .min(1)
-              .describe(
-                'Front template HTML with field placeholders (e.g., "{{Front}}")',
-              ),
-            Back: z
-              .string()
-              .min(1)
-              .describe(
-                'Back template HTML with field placeholders (e.g., "{{FrontSide}}<hr id=answer>{{Back}}")',
-              ),
-          }),
-        )
-        .min(1)
-        .describe(
-          "Card templates (at least one required). Each template generates one card per note.",
-        ),
+      }),
+      cardTemplates: jsonArraySchema(
+        z.object({
+          Name: z.string().min(1).describe('Template name (e.g., "Card 1")'),
+          Front: z
+            .string()
+            .min(1)
+            .describe(
+              'Front template HTML with field placeholders (e.g., "{{Front}}")',
+            ),
+          Back: z
+            .string()
+            .min(1)
+            .describe(
+              'Back template HTML with field placeholders (e.g., "{{FrontSide}}<hr id=answer>{{Back}}")',
+            ),
+        }),
+        {
+          min: 1,
+          description:
+            "Card templates (at least one required). Each template generates one card per note.",
+        },
+      ),
       css: z
         .string()
         .optional()
@@ -81,24 +81,56 @@ export class CreateModelTool {
       isCloze,
     }: {
       modelName: string;
-      inOrderFields: string[];
-      cardTemplates: CardTemplate[];
+      inOrderFields: string[] | string;
+      cardTemplates: CardTemplate[] | string;
       css?: string;
       isCloze?: boolean;
     },
     context: Context,
   ) {
+    let parsedFields: string[];
+    if (typeof inOrderFields === "string") {
+      try {
+        parsedFields = JSON.parse(inOrderFields);
+      } catch {
+        return createErrorResponse(
+          new Error(
+            "Invalid inOrderFields: expected array or valid JSON string",
+          ),
+          { hint: "Pass inOrderFields as an array of field names" },
+        );
+      }
+    } else {
+      parsedFields = inOrderFields;
+    }
+
+    let parsedTemplates: CardTemplate[];
+    if (typeof cardTemplates === "string") {
+      try {
+        parsedTemplates = JSON.parse(cardTemplates);
+      } catch {
+        return createErrorResponse(
+          new Error(
+            "Invalid cardTemplates: expected array or valid JSON string",
+          ),
+          { hint: "Pass cardTemplates as an array of template objects" },
+        );
+      }
+    } else {
+      parsedTemplates = cardTemplates;
+    }
+
     try {
       this.logger.log(
-        `Creating model: ${modelName} with ${inOrderFields.length} fields`,
+        `Creating model: ${modelName} with ${parsedFields.length} fields`,
       );
       await context.reportProgress({ progress: 10, total: 100 });
 
       // Validate field references in templates (warning only, not error)
       const warnings: string[] = [];
-      const fieldSet = new Set(inOrderFields);
+      const fieldSet = new Set(parsedFields);
 
-      for (const template of cardTemplates) {
+      for (const template of parsedTemplates) {
         const templateContent = `${template.Front} ${template.Back}`;
         // Simple regex to find {{FieldName}} references
         const fieldRefs = templateContent.match(/\{\{([^}]+)\}\}/g) || [];
@@ -152,7 +184,7 @@ export class CreateModelTool {
         templateCount: cardTemplates.length,
         hasCss: !!css,
         isCloze: isCloze || false,
-        message: `Successfully created model "${modelName}" with ${inOrderFields.length} fields and ${cardTemplates.length} template(s)`,
+        message: `Successfully created model "${modelName}" with ${parsedFields.length} fields and ${cardTemplates.length} template(s)`,
       };
 
       if (warnings.length > 0) {

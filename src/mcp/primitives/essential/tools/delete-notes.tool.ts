@@ -7,6 +7,7 @@ import {
   createSuccessResponse,
   createErrorResponse,
 } from "@/mcp/utils/anki.utils";
+import { jsonArraySchema } from "@/mcp/utils/schema.utils";
 
 /**
  * Tool for deleting notes and their associated cards
@@ -23,14 +24,13 @@ export class DeleteNotesTool {
       "Delete notes by their IDs. This will permanently remove the notes and ALL associated cards. " +
       "This action cannot be undone unless you have a backup. CRITICAL: This is destructive and permanent - only delete notes the user explicitly confirmed for deletion.",
     parameters: z.object({
-      notes: z
-        .array(z.number())
-        .min(1)
-        .max(100)
-        .describe(
+      notes: jsonArraySchema(z.number(), {
+        min: 1,
+        max: 100,
+        description:
           "Array of note IDs to delete (max 100 at once for safety). " +
-            "Get these IDs from findNotes tool. ALL cards associated with these notes will be deleted.",
-        ),
+          "Get these IDs from findNotes tool. ALL cards associated with these notes will be deleted.",
+      }),
       confirmDeletion: z
         .boolean()
         .describe(
@@ -39,31 +39,50 @@ export class DeleteNotesTool {
     }),
   })
   async deleteNotes(
-    { notes, confirmDeletion }: { notes: number[]; confirmDeletion: boolean },
+    {
+      notes,
+      confirmDeletion,
+    }: { notes: number[] | string; confirmDeletion: boolean },
     context: Context,
   ) {
+    let parsedNotes: number[];
+    if (typeof notes === "string") {
+      try {
+        parsedNotes = JSON.parse(notes);
+      } catch {
+        return createErrorResponse(
+          new Error(
+            "Invalid notes parameter: expected array or valid JSON string",
+          ),
+          { hint: "Pass notes as an array of note IDs" },
+        );
+      }
+    } else {
+      parsedNotes = notes;
+    }
+
     try {
       // Safety check - require explicit confirmation
       if (!confirmDeletion) {
         return createErrorResponse(new Error("Deletion not confirmed"), {
-          requestedNotes: notes,
-          noteCount: notes.length,
+          requestedNotes: parsedNotes,
+          noteCount: parsedNotes.length,
           hint: "Set confirmDeletion to true to permanently delete these notes and all their cards",
           warning: "This action cannot be undone!",
         });
       }
 
-      this.logger.log(`Deleting ${notes.length} note(s)`);
+      this.logger.log(`Deleting ${parsedNotes.length} note(s)`);
       await context.reportProgress({ progress: 25, total: 100 });
 
       // First, get info about the notes to be deleted (for logging and confirmation)
       const notesInfo = await this.ankiClient.invoke<any[]>("notesInfo", {
-        notes: notes,
+        notes: parsedNotes,
       });
 
       const validNotes = notesInfo.filter((note) => note && note.noteId);
       const validNoteIds = validNotes.map((note) => note.noteId);
-      const notFoundCount = notes.length - validNotes.length;
+      const notFoundCount = parsedNotes.length - validNotes.length;
 
       if (validNoteIds.length === 0) {
         this.logger.warn("No valid notes found to delete");
@@ -72,8 +91,8 @@ export class DeleteNotesTool {
         return createSuccessResponse({
           success: true,
           deletedCount: 0,
-          notFoundCount: notes.length,
-          requestedIds: notes,
+          notFoundCount: parsedNotes.length,
+          requestedIds: parsedNotes,
           message:
             "No notes were deleted (none of the provided IDs were valid)",
           hint: "The notes may have already been deleted or the IDs are invalid",
@@ -109,7 +128,7 @@ export class DeleteNotesTool {
         deletedNoteIds: validNoteIds,
         cardsDeleted: totalCards,
         notFoundCount,
-        requestedIds: notes,
+        requestedIds: parsedNotes,
         message: message,
         warning: "These notes and cards have been permanently deleted",
         hint: "Consider syncing with AnkiWeb to propagate deletions to other devices",
@@ -120,14 +139,14 @@ export class DeleteNotesTool {
       if (error instanceof Error) {
         if (error.message.includes("permission")) {
           return createErrorResponse(error, {
-            requestedNotes: notes,
+            requestedNotes: parsedNotes,
             hint: "Permission denied. Check if Anki allows deletions via AnkiConnect.",
           });
         }
       }
 
       return createErrorResponse(error, {
-        requestedNotes: notes,
+        requestedNotes: parsedNotes,
         hint: "Make sure Anki is running and the note IDs are valid",
       });
     }
