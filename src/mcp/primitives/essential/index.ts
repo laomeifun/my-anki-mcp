@@ -43,7 +43,9 @@ export { ReviewSessionPrompt } from "./prompts/review-session.prompt";
 export { TwentyRulesPrompt } from "./prompts/twenty-rules.prompt";
 
 // Resources
-export { SystemInfoResource } from "./resources/system-info.resource";
+export { DeckResource } from "./resources/deck.resource";
+export { ModelResource } from "./resources/model.resource";
+export { TagResource } from "./resources/tag.resource";
 
 // Module
 import { Module, DynamicModule, Provider } from "@nestjs/common";
@@ -72,7 +74,9 @@ import { GetTagsTool } from "./tools/get-tags.tool";
 import { TagActionsTool } from "./tools/tagActions";
 import { ReviewSessionPrompt } from "./prompts/review-session.prompt";
 import { TwentyRulesPrompt } from "./prompts/twenty-rules.prompt";
-import { SystemInfoResource } from "./resources/system-info.resource";
+import { DeckResource } from "./resources/deck.resource";
+import { ModelResource } from "./resources/model.resource";
+import { TagResource } from "./resources/tag.resource";
 
 // MCP primitives that need to be discovered by McpNest (tools, prompts, resources)
 // These are exported for use in AppModule.providers (required by MCP-Nest 1.9.0+)
@@ -103,7 +107,9 @@ export const ESSENTIAL_MCP_TOOLS = [
   ReviewSessionPrompt,
   TwentyRulesPrompt,
   // Resources
-  SystemInfoResource,
+  DeckResource,
+  ModelResource,
+  TagResource,
 ];
 
 // All providers for the module (includes infrastructure like AnkiConnectClient)
