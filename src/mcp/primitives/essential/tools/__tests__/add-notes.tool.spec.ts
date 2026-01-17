@@ -24,13 +24,17 @@ describe("AddNotesTool", () => {
       tags: string[];
       allowDuplicate: boolean;
     }> = {},
-  ) => ({
-    deckName: overrides.deckName ?? "Default",
-    modelName: overrides.modelName ?? "Basic",
-    fields: overrides.fields ?? { Front: "Question", Back: "Answer" },
-    tags: overrides.tags,
-    allowDuplicate: overrides.allowDuplicate,
-  });
+  ) => {
+    return {
+      deckName: overrides.deckName ?? "Default",
+      modelName: overrides.modelName ?? "Basic",
+      fields: overrides.fields ?? { Front: "Question", Back: "Answer" },
+      ...(overrides.tags !== undefined && { tags: overrides.tags }),
+      ...(overrides.allowDuplicate !== undefined && {
+        allowDuplicate: overrides.allowDuplicate,
+      }),
+    };
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -379,8 +383,47 @@ describe("AddNotesTool", () => {
   });
 
   describe("Validation", () => {
-    it("should reject batch when primary field is empty", async () => {
+    it("should reject batch when primary field is empty (with stopOnFirstError)", async () => {
       setupModelFieldNamesMock();
+      const notes = [
+        makeNote({ fields: { Front: "Valid", Back: "Valid" } }),
+        makeNote({ fields: { Front: "", Back: "Valid" } }),
+      ];
+
+      const rawResult = await tool.addNotes(
+        { notes, stopOnFirstError: true },
+        mockContext,
+      );
+      const result = parseToolResult(rawResult);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("Primary field");
+      expect(result.error).toContain("cannot be empty");
+    });
+
+    it("should identify the index of the invalid note (with stopOnFirstError)", async () => {
+      setupModelFieldNamesMock();
+      const notes = [
+        makeNote({ fields: { Front: "Valid", Back: "Valid" } }),
+        makeNote({ fields: { Front: "Valid", Back: "Valid" } }),
+        makeNote({ fields: { Front: "   ", Back: "Valid" } }),
+      ];
+
+      const rawResult = await tool.addNotes(
+        { notes, stopOnFirstError: true },
+        mockContext,
+      );
+      const result = parseToolResult(rawResult);
+
+      expect(result.noteIndex).toBe(2);
+    });
+
+    it("should collect validation errors when stopOnFirstError is false", async () => {
+      setupModelFieldNamesMock();
+      ankiClient.invoke
+        .mockImplementationOnce(() => Promise.resolve(["Front", "Back"]))
+        .mockResolvedValueOnce([123]);
+
       const notes = [
         makeNote({ fields: { Front: "Valid", Back: "Valid" } }),
         makeNote({ fields: { Front: "", Back: "Valid" } }),
@@ -389,23 +432,9 @@ describe("AddNotesTool", () => {
       const rawResult = await tool.addNotes({ notes }, mockContext);
       const result = parseToolResult(rawResult);
 
-      expect(result.success).toBe(false);
-      expect(result.error).toContain("Primary field");
-      expect(result.error).toContain("cannot be empty");
-    });
-
-    it("should identify the index of the invalid note", async () => {
-      setupModelFieldNamesMock();
-      const notes = [
-        makeNote({ fields: { Front: "Valid", Back: "Valid" } }),
-        makeNote({ fields: { Front: "Valid", Back: "Valid" } }),
-        makeNote({ fields: { Front: "   ", Back: "Valid" } }),
-      ];
-
-      const rawResult = await tool.addNotes({ notes }, mockContext);
-      const result = parseToolResult(rawResult);
-
-      expect(result.noteIndex).toBe(2);
+      expect(result.success).toBe(true);
+      expect(result.successCount).toBe(1);
+      expect(result.failedCount).toBe(1);
     });
 
     it("should allow empty non-primary fields", async () => {
@@ -423,11 +452,14 @@ describe("AddNotesTool", () => {
       expect(result.noteIds).toEqual([123]);
     });
 
-    it("should identify primary field name in error", async () => {
+    it("should identify primary field name in error (with stopOnFirstError)", async () => {
       setupModelFieldNamesMock();
       const notes = [makeNote({ fields: { Front: "", Back: "Valid" } })];
 
-      const rawResult = await tool.addNotes({ notes }, mockContext);
+      const rawResult = await tool.addNotes(
+        { notes, stopOnFirstError: true },
+        mockContext,
+      );
       const result = parseToolResult(rawResult);
 
       expect(result.primaryField).toBe("Front");
@@ -977,7 +1009,7 @@ describe("AddNotesTool", () => {
       expect(result.successCount).toBe(1);
       expect(result.failedCount).toBe(1);
       expect(result.results[1].providedFields).toEqual(["Text", "WrongExtra"]);
-      expect(result.results[1].error).toContain("modelFieldNames");
+      expect(result.results[1].error).toContain("Failed to create note");
     });
 
     it("should list all unique models when field error occurs", async () => {

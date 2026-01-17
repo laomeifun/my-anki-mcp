@@ -81,63 +81,28 @@ export class CreateModelTool {
       isCloze,
     }: {
       modelName: string;
-      inOrderFields: string[] | string;
-      cardTemplates: CardTemplate[] | string;
+      inOrderFields: string[];
+      cardTemplates: CardTemplate[];
       css?: string;
       isCloze?: boolean;
     },
     context: Context,
   ) {
-    let parsedFields: string[];
-    if (typeof inOrderFields === "string") {
-      try {
-        parsedFields = JSON.parse(inOrderFields);
-      } catch {
-        return createErrorResponse(
-          new Error(
-            "Invalid inOrderFields: expected array or valid JSON string",
-          ),
-          { hint: "Pass inOrderFields as an array of field names" },
-        );
-      }
-    } else {
-      parsedFields = inOrderFields;
-    }
-
-    let parsedTemplates: CardTemplate[];
-    if (typeof cardTemplates === "string") {
-      try {
-        parsedTemplates = JSON.parse(cardTemplates);
-      } catch {
-        return createErrorResponse(
-          new Error(
-            "Invalid cardTemplates: expected array or valid JSON string",
-          ),
-          { hint: "Pass cardTemplates as an array of template objects" },
-        );
-      }
-    } else {
-      parsedTemplates = cardTemplates;
-    }
-
     try {
       this.logger.log(
-        `Creating model: ${modelName} with ${parsedFields.length} fields`,
+        `Creating model: ${modelName} with ${inOrderFields.length} fields`,
       );
       await context.reportProgress({ progress: 10, total: 100 });
 
-      // Validate field references in templates (warning only, not error)
       const warnings: string[] = [];
-      const fieldSet = new Set(parsedFields);
+      const fieldSet = new Set(inOrderFields);
 
-      for (const template of parsedTemplates) {
+      for (const template of cardTemplates) {
         const templateContent = `${template.Front} ${template.Back}`;
-        // Simple regex to find {{FieldName}} references
         const fieldRefs = templateContent.match(/\{\{([^}]+)\}\}/g) || [];
 
         for (const ref of fieldRefs) {
           const fieldName = ref.slice(2, -2).trim();
-          // Skip special Anki fields
           if (
             fieldName === "FrontSide" ||
             fieldName === "Tags" ||
@@ -160,7 +125,6 @@ export class CreateModelTool {
 
       await context.reportProgress({ progress: 30, total: 100 });
 
-      // Create the model
       const result = await this.ankiClient.invoke<any>("createModel", {
         modelName,
         inOrderFields,
@@ -171,7 +135,6 @@ export class CreateModelTool {
 
       await context.reportProgress({ progress: 80, total: 100 });
 
-      // AnkiConnect returns the model configuration on success
       this.logger.log(`Successfully created model: ${modelName}`);
 
       await context.reportProgress({ progress: 100, total: 100 });
@@ -184,7 +147,7 @@ export class CreateModelTool {
         templateCount: cardTemplates.length,
         hasCss: !!css,
         isCloze: isCloze || false,
-        message: `Successfully created model "${modelName}" with ${parsedFields.length} fields and ${cardTemplates.length} template(s)`,
+        message: `Successfully created model "${modelName}" with ${inOrderFields.length} fields and ${cardTemplates.length} template(s)`,
       };
 
       if (warnings.length > 0) {

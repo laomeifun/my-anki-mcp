@@ -8,6 +8,7 @@ import {
   createSuccessResponse,
   createErrorResponse,
 } from "@/mcp/utils/anki.utils";
+import { safeJsonParse } from "@/mcp/utils/schema.utils";
 
 const NoteInputSchema = z.object({
   deckName: z.string().min(1).describe("The deck to add the note to"),
@@ -18,7 +19,7 @@ const NoteInputSchema = z.object({
   fields: z
     .record(z.string(), z.string())
     .describe(
-      'Field values as key-value pairs (e.g., {"Front": "question", "Back": "answer"})',
+      'MUST pass as object, NOT as JSON string. Example: {"Front": "question", "Back": "answer"}',
     ),
   tags: z
     .array(z.string())
@@ -27,8 +28,7 @@ const NoteInputSchema = z.object({
   allowDuplicate: z
     .boolean()
     .optional()
-    .default(false)
-    .describe("Whether to allow adding duplicate notes"),
+    .describe("Whether to allow adding duplicate notes (defaults to false)"),
   duplicateScope: z
     .enum(["deck", "collection"])
     .optional()
@@ -58,21 +58,22 @@ type NoteInput = z.infer<typeof NoteInputSchema>;
 
 const NotesArraySchema = z
   .union([
-    z.array(NoteInputSchema).min(1).max(25),
+    z.array(NoteInputSchema).min(1).max(10),
     z.string().transform((str) => {
-      try {
-        const parsed = JSON.parse(str);
-        if (Array.isArray(parsed)) {
-          return parsed as NoteInput[];
-        }
-        throw new Error("Not an array");
-      } catch {
-        throw new Error("Invalid JSON string for notes array");
+      const result = safeJsonParse<NoteInput[]>(str, "notes array");
+      if (!result.success) {
+        throw new Error(result.error);
       }
+      if (!Array.isArray(result.data)) {
+        throw new Error(
+          "Invalid notes: expected array but got object or primitive",
+        );
+      }
+      return result.data;
     }),
   ])
   .describe(
-    "Array of notes to add (1-25 notes). Each note requires deckName, modelName, and fields.",
+    "MUST pass as array of objects, NOT as JSON string. Max 10 notes per call. Each note requires deckName, modelName, and fields object.",
   );
 
 /**
@@ -100,40 +101,53 @@ export class AddNotesTool {
   @Tool({
     name: "addNotes",
     description:
-      "Add multiple notes to Anki in a single batch operation. Supports up to 25 notes per call. " +
+      "Add multiple notes to Anki in a single batch operation. Supports up to 10 notes per call (for larger batches, call multiple times). " +
       "Returns detailed results showing which notes succeeded or failed (partial failures are possible). " +
       "Use modelNames to see available note types and modelFieldNames to see required fields. " +
       "IMPORTANT: Only create notes that were explicitly requested by the user.",
     parameters: z.object({
       notes: NotesArraySchema,
+      stopOnFirstError: z
+        .boolean()
+        .optional()
+        .default(false)
+        .describe(
+          "If true, stop processing immediately when the first note fails validation. Useful for debugging.",
+        ),
     }),
   })
-  async addNotes({ notes }: { notes: NoteInput[] | string }, context: Context) {
+  async addNotes(
+    {
+      notes,
+      stopOnFirstError = false,
+    }: { notes: NoteInput[] | string; stopOnFirstError?: boolean },
+    context: Context,
+  ) {
     // Fallback: handle notes passed as JSON string (for direct method calls or MCP clients)
     let parsedNotes: NoteInput[];
     if (typeof notes === "string") {
-      try {
-        parsedNotes = JSON.parse(notes);
-      } catch {
-        return createErrorResponse(
-          new Error(
-            "Invalid notes parameter: expected array or valid JSON string",
-          ),
-          { hint: "Pass notes as an array, not a string" },
-        );
+      const parseResult = safeJsonParse<NoteInput[]>(notes, "notes");
+      if (!parseResult.success) {
+        return createErrorResponse(new Error(parseResult.error!), {
+          hint: "Check for unescaped quotes or special characters in field values",
+          ...(parseResult.snippet && { errorContext: parseResult.snippet }),
+        });
       }
-      if (!Array.isArray(parsedNotes)) {
+      if (!Array.isArray(parseResult.data)) {
         return createErrorResponse(
           new Error("Invalid notes parameter: parsed value is not an array"),
           { hint: "notes must be an array of note objects" },
         );
       }
+      parsedNotes = parseResult.data;
     } else {
       parsedNotes = notes;
     }
 
     try {
-      this.logger.log(`Adding ${parsedNotes.length} note(s) in batch`);
+      this.logger.log(
+        `Adding ${parsedNotes.length} note(s) in batch (stopOnFirstError: ${stopOnFirstError})`,
+      );
       await context.reportProgress({ progress: 10, total: 100 });
 
       // Step 1: Fetch model field names for all unique models to identify primary fields
@@ -159,6 +173,12 @@ export class AddNotesTool {
 
       // Step 2: Validate only the primary (first) field is not empty for each note
       // AnkiConnect requires the first field to have content for duplicate checking
+      const validationErrors: Array<{
+        index: number;
+        error: string;
+        noteInfo: { deckName: string; modelName: string };
+      }> = [];
+
       for (let i = 0; i < parsedNotes.length; i++) {
         const note = parsedNotes[i];
         const modelFields = modelFieldsMap.get(note.modelName)!;
@@ -166,25 +186,64 @@ export class AddNotesTool {
         const primaryValue = note.fields[primaryField];
 
         if (!primaryValue || primaryValue.trim() === "") {
-          return createErrorResponse(
-            new Error(
-              `Note at index ${i}: Primary field "${primaryField}" cannot be empty.`,
-            ),
-            {
-              noteIndex: i,
-              deckName: note.deckName,
-              modelName: note.modelName,
-              primaryField,
-              hint: `The first field of the "${note.modelName}" model must have content. Other fields can be empty.`,
-            },
-          );
+          const errorInfo = {
+            index: i,
+            error: `Primary field "${primaryField}" cannot be empty`,
+            noteInfo: { deckName: note.deckName, modelName: note.modelName },
+          };
+
+          if (stopOnFirstError) {
+            return createErrorResponse(
+              new Error(
+                `Note at index ${i}: Primary field "${primaryField}" cannot be empty.`,
+              ),
+              {
+                noteIndex: i,
+                deckName: note.deckName,
+                modelName: note.modelName,
+                primaryField,
+                hint: `The first field of the "${note.modelName}" model must have content. stopOnFirstError=true stopped processing.`,
+              },
+            );
+          }
+
+          validationErrors.push(errorInfo);
         }
+      }
+
+      // If we have validation errors and didn't stop early, report them all
+      if (
+        validationErrors.length > 0 &&
+        validationErrors.length === parsedNotes.length
+      ) {
+        return createErrorResponse(new Error("All notes failed validation"), {
+          validationErrors,
+          hint: "All notes have empty primary fields. Use stopOnFirstError=true to debug one at a time.",
+        });
+      }
+
+      // Filter out invalid notes for processing
+      const validNoteIndices = new Set(
+        parsedNotes
+          .map((_, i) => i)
+          .filter((i) => !validationErrors.some((e) => e.index === i)),
+      );
+      const validNotes = parsedNotes.filter((_, i) => validNoteIndices.has(i));
+
+      // If no valid notes remain, return error
+      if (validNotes.length === 0) {
+        return createErrorResponse(
+          new Error("No valid notes to add after validation"),
+          {
+            validationErrors,
+            hint: `All ${parsedNotes.length} notes failed validation. Check primary field values.`,
+          },
+        );
       }
 
       await context.reportProgress({ progress: 25, total: 100 });
 
-      // Step 3: Build AnkiConnect params for each note
-      const ankiNotes = parsedNotes.map((note) => {
+      const ankiNotes = validNotes.map((note) => {
         const noteParams: Record<string, unknown> = {
           deckName: note.deckName,
           modelName: note.modelName,
@@ -228,12 +287,13 @@ export class AddNotesTool {
 
       await context.reportProgress({ progress: 75, total: 100 });
 
-      // Step 4: Parse results and build detailed response
-      const results: NoteResult[] = noteIds.map((noteId, index) => {
-        const note = parsedNotes[index];
+      const validIndicesArray = Array.from(validNoteIndices);
+      const apiResults: NoteResult[] = noteIds.map((noteId, idx) => {
+        const originalIndex = validIndicesArray[idx];
+        const note = validNotes[idx];
         if (noteId !== null) {
           return {
-            index,
+            index: originalIndex,
             success: true,
             noteId,
             deckName: note.deckName,
@@ -241,17 +301,31 @@ export class AddNotesTool {
           };
         } else {
           return {
-            index,
+            index: originalIndex,
             success: false,
             noteId: null,
             deckName: note.deckName,
             modelName: note.modelName,
             providedFields: Object.keys(note.fields),
             error:
-              "Failed to create note. Possible causes: duplicate note, invalid field names for this model, or missing required fields. Use modelFieldNames to verify correct field names.",
+              "Failed to create note. Possible causes: duplicate note, invalid field names for this model, or missing required fields.",
           };
         }
       });
+
+      const validationFailResults: NoteResult[] = validationErrors.map((e) => ({
+        index: e.index,
+        success: false,
+        noteId: null,
+        deckName: e.noteInfo.deckName,
+        modelName: e.noteInfo.modelName,
+        error: e.error,
+      }));
+
+      const results: NoteResult[] = [
+        ...apiResults,
+        ...validationFailResults,
+      ].sort((a, b) => a.index - b.index);
 
       const successfulNotes = results.filter((r) => r.success);
       const failedNotes = results.filter((r) => !r.success);

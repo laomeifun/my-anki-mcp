@@ -46,9 +46,10 @@ Tags in addTags/removeTags are space-separated strings (e.g., "tag1 tag2 tag3").
         .describe("The tag action to perform"),
       notes: z
         .array(z.number())
+        .max(100)
         .optional()
         .describe(
-          "[addTags, removeTags, replaceTags] Array of note IDs to modify",
+          "[addTags, removeTags, replaceTags] Array of note IDs to modify (max 100)",
         ),
       tags: z
         .string()

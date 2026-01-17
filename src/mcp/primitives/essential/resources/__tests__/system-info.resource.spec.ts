@@ -112,130 +112,150 @@ describe("SystemInfoResource", () => {
   });
 
   describe("getEnvironmentVariable", () => {
-    afterEach(() => {
-      // Clean up test env vars
-      delete process.env.TEST_VAR;
-      delete process.env.ANOTHER_TEST_VAR;
-      delete process.env.EMPTY_VAR;
-      delete process.env.SPECIAL_VAR;
-      delete process.env.LONG_VAR;
-      delete process.env.NUMERIC_VAR;
+    const originalEnv: Record<string, string | undefined> = {};
+
+    beforeEach(() => {
+      originalEnv.NODE_ENV = process.env.NODE_ENV;
+      originalEnv.LOG_LEVEL = process.env.LOG_LEVEL;
+      originalEnv.ANKI_CONNECT_URL = process.env.ANKI_CONNECT_URL;
+      originalEnv.HOST = process.env.HOST;
+      originalEnv.PORT = process.env.PORT;
     });
 
-    it("should return existing environment variable", () => {
-      process.env.TEST_VAR = "test-value";
+    afterEach(() => {
+      process.env.NODE_ENV = originalEnv.NODE_ENV;
+      process.env.LOG_LEVEL = originalEnv.LOG_LEVEL;
+      process.env.ANKI_CONNECT_URL = originalEnv.ANKI_CONNECT_URL;
+      process.env.HOST = originalEnv.HOST;
+      process.env.PORT = originalEnv.PORT;
+    });
+
+    it("should return existing allowlisted environment variable", () => {
+      process.env.LOG_LEVEL = "debug";
 
       const result = resource.getEnvironmentVariable({
-        uri: "env://test_var",
-        name: "test_var",
+        uri: "env://log_level",
+        name: "log_level",
       });
 
       expect(result).toHaveProperty("contents");
       expect(result.contents).toHaveLength(1);
-      expect(result.contents[0].text).toBe("test-value");
+      expect(result.contents[0].text).toBe("debug");
     });
 
     it("should return correct mimeType for environment variables", () => {
-      process.env.TEST_VAR = "test-value";
+      process.env.LOG_LEVEL = "info";
 
       const result = resource.getEnvironmentVariable({
-        uri: "env://test_var",
-        name: "test_var",
+        uri: "env://log_level",
+        name: "log_level",
       });
 
       expect(result.contents[0].mimeType).toBe("text/plain");
     });
 
-    it('should return "undefined" for missing environment variable', () => {
+    it("should deny access to non-allowlisted variables", () => {
       const result = resource.getEnvironmentVariable({
-        uri: "env://nonexistent",
-        name: "nonexistent",
+        uri: "env://some_random_var",
+        name: "some_random_var",
       });
 
-      expect(result.contents[0].text).toBe("undefined");
+      expect(result.contents[0].text).toContain("Access denied");
+      expect(result.contents[0].text).toContain("not in the allowed");
     });
 
     it("should handle case-insensitive variable names (uppercase conversion)", () => {
-      process.env.TEST_VAR = "test-value";
+      process.env.ANKI_CONNECT_URL = "http://test:8765";
 
       const result = resource.getEnvironmentVariable({
-        uri: "env://test_var",
-        name: "test_var", // lowercase input
+        uri: "env://anki_connect_url",
+        name: "anki_connect_url",
       });
 
-      expect(result.contents[0].text).toBe("test-value");
+      expect(result.contents[0].text).toBe("http://test:8765");
     });
 
     it("should handle uppercase variable names", () => {
-      process.env.ANOTHER_TEST_VAR = "another-value";
+      process.env.HOST = "0.0.0.0";
 
       const result = resource.getEnvironmentVariable({
-        uri: "env://another_test_var",
-        name: "ANOTHER_TEST_VAR", // uppercase input
+        uri: "env://host",
+        name: "HOST",
       });
 
-      expect(result.contents[0].text).toBe("another-value");
+      expect(result.contents[0].text).toBe("0.0.0.0");
     });
 
     it("should return correct URI in response", () => {
-      process.env.TEST_VAR = "test-value";
-      const uri = "env://test_var";
+      process.env.PORT = "3000";
+      const uri = "env://port";
 
       const result = resource.getEnvironmentVariable({
         uri,
-        name: "test_var",
+        name: "port",
       });
 
       expect(result.contents[0].uri).toBe(uri);
     });
 
-    it("should return 'undefined' for empty string environment variable", () => {
-      process.env.EMPTY_VAR = "";
+    it("should return '(not set)' for unset allowlisted variable", () => {
+      delete process.env.LOG_LEVEL;
 
       const result = resource.getEnvironmentVariable({
-        uri: "env://empty_var",
-        name: "empty_var",
+        uri: "env://log_level",
+        name: "log_level",
       });
 
-      // Note: The implementation treats empty string as falsy and returns "undefined"
-      expect(result.contents[0].text).toBe("undefined");
+      expect(result.contents[0].text).toBe("(not set)");
     });
 
-    it("should handle environment variables with special characters", () => {
-      process.env.SPECIAL_VAR = "value with spaces and symbols: !@#$%";
-
+    it("should block access to variables with sensitive patterns", () => {
       const result = resource.getEnvironmentVariable({
-        uri: "env://special_var",
-        name: "special_var",
+        uri: "env://api_key",
+        name: "api_key",
       });
 
-      expect(result.contents[0].text).toBe(
-        "value with spaces and symbols: !@#$%",
-      );
+      expect(result.contents[0].text).toContain("Access denied");
     });
 
-    it("should handle very long environment variable values", () => {
-      const longValue = "x".repeat(10000);
-      process.env.LONG_VAR = longValue;
-
+    it("should block access to SECRET variables", () => {
       const result = resource.getEnvironmentVariable({
-        uri: "env://long_var",
-        name: "long_var",
+        uri: "env://my_secret",
+        name: "my_secret",
       });
 
-      expect(result.contents[0].text).toBe(longValue);
-      expect(result.contents[0].text.length).toBe(10000);
+      expect(result.contents[0].text).toContain("Access denied");
+    });
+
+    it("should block access to TOKEN variables", () => {
+      const result = resource.getEnvironmentVariable({
+        uri: "env://auth_token",
+        name: "auth_token",
+      });
+
+      expect(result.contents[0].text).toContain("Access denied");
+    });
+
+    it("should allow access to NODE_ENV", () => {
+      process.env.NODE_ENV = "test";
+
+      const result = resource.getEnvironmentVariable({
+        uri: "env://node_env",
+        name: "node_env",
+      });
+
+      expect(result.contents[0].text).toBe("test");
     });
 
     it("should handle numeric environment variable values", () => {
-      process.env.NUMERIC_VAR = "12345";
+      process.env.PORT = "8080";
 
       const result = resource.getEnvironmentVariable({
-        uri: "env://numeric_var",
-        name: "numeric_var",
+        uri: "env://port",
+        name: "port",
       });
 
-      expect(result.contents[0].text).toBe("12345");
+      expect(result.contents[0].text).toBe("8080");
     });
   });
 });

@@ -32,6 +32,7 @@ export { AddNotesTool } from "./tools/add-notes.tool";
 export { FindNotesTool } from "./tools/find-notes.tool";
 export { NotesInfoTool } from "./tools/notes-info.tool";
 export { UpdateNoteFieldsTool } from "./tools/update-note-fields.tool";
+export { UpdateNotesFieldsTool } from "./tools/update-notes-fields.tool";
 export { DeleteNotesTool } from "./tools/delete-notes.tool";
 export { MediaActionsTool } from "./tools/mediaActions";
 export { GetTagsTool } from "./tools/get-tags.tool";
@@ -64,6 +65,7 @@ import { AddNotesTool } from "./tools/add-notes.tool";
 import { FindNotesTool } from "./tools/find-notes.tool";
 import { NotesInfoTool } from "./tools/notes-info.tool";
 import { UpdateNoteFieldsTool } from "./tools/update-note-fields.tool";
+import { UpdateNotesFieldsTool } from "./tools/update-notes-fields.tool";
 import { DeleteNotesTool } from "./tools/delete-notes.tool";
 import { MediaActionsTool } from "./tools/mediaActions";
 import { GetTagsTool } from "./tools/get-tags.tool";
@@ -92,6 +94,7 @@ export const ESSENTIAL_MCP_TOOLS = [
   FindNotesTool,
   NotesInfoTool,
   UpdateNoteFieldsTool,
+  UpdateNotesFieldsTool,
   DeleteNotesTool,
   MediaActionsTool,
   GetTagsTool,

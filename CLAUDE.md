@@ -37,10 +37,10 @@ npm run inspector:stdio:debug    # With debugger on port 9229
 
 Two separate entry points compiled in single build:
 
-| Mode | Entry | Use Case | Logging |
-|------|-------|----------|---------|
-| STDIO | `dist/main-stdio.js` | Claude Desktop, MCP clients | stderr |
-| HTTP | `dist/main-http.js` | Web-based AI (ChatGPT, claude.ai) | stdout |
+| Mode  | Entry                | Use Case                          | Logging |
+| ----- | -------------------- | --------------------------------- | ------- |
+| STDIO | `dist/main-stdio.js` | Claude Desktop, MCP clients       | stderr  |
+| HTTP  | `dist/main-http.js`  | Web-based AI (ChatGPT, claude.ai) | stdout  |
 
 ### Core Files
 
@@ -53,15 +53,13 @@ src/
 ├── anki-config.service.ts # IAnkiConfig implementation
 └── mcp/
     ├── clients/anki-connect.client.ts  # HTTP client using ky (retries, error handling)
-    ├── primitives/essential/           # Core tools, prompts, resources
-    └── primitives/gui/                 # GUI-specific tools (require user approval)
+    └── primitives/essential/           # Core tools, prompts, resources
 ```
 
 ### Module System
 
 ```
 AppModule → McpModule.forRoot() → McpPrimitivesAnkiEssentialModule.forRoot()
-                                → McpPrimitivesAnkiGuiModule.forRoot()
 ```
 
 All tools/prompts/resources are providers auto-discovered by `@rekog/mcp-nest`.
@@ -78,14 +76,8 @@ All tools/prompts/resources are providers auto-discovered by `@rekog/mcp-nest`.
 1. Create `src/mcp/primitives/essential/tools/your-tool.tool.ts`
 2. Export from `src/mcp/primitives/essential/index.ts`
 3. Add to `MCP_PRIMITIVES` array
-4. **Update `manifest.json`** ← Don't forget!
+4. **Update `manifest.json`** ← Use snake_case for tool names (e.g., `create_deck`)
 5. Create test: `src/mcp/primitives/essential/tools/__tests__/your-tool.tool.spec.ts`
-
-### GUI Tools (interface operations)
-
-Same as above but in `src/mcp/primitives/gui/`. Must include dual warnings:
-- "IMPORTANT: Only use when user explicitly requests..."
-- "This tool is for note editing/creation workflows, NOT for review sessions"
 
 ### Tool Pattern
 
@@ -138,6 +130,7 @@ Bundle uses STDIO entry point. Key gotchas:
 ## Planning Documents
 
 Check `.claude-draft/` for implementation plans and analysis:
+
 - `ACTIONS_IMPLEMENTATION.md` - AnkiConnect API coverage tracking
 - `PROJECT_SUMMARY.md` - Architecture decisions
 - `TEST_PLAN.md` - Testing strategy
@@ -145,3 +138,64 @@ Check `.claude-draft/` for implementation plans and analysis:
 ## Environment
 
 Default AnkiConnect URL: `http://localhost:8765` (override: `ANKI_CONNECT_URL`)
+
+## Security Notes
+
+### HTTP Mode (`--ngrok`)
+
+- Origin validation guard prevents DNS rebinding attacks from browsers
+- Direct API calls (curl, MCP clients) are allowed without Origin header
+- For public exposure, consider the inherent security-through-obscurity of ngrok URLs
+
+### Environment Variable Resource
+
+The `env://{name}` resource restricts access to a safe allowlist:
+
+- `NODE_ENV`, `LOG_LEVEL`, `HOST`, `PORT`, `ALLOWED_ORIGINS`
+- `ANKI_CONNECT_URL`, `ANKI_CONNECT_API_VERSION`, `ANKI_CONNECT_TIMEOUT`
+
+Sensitive variables (containing `KEY`, `SECRET`, `TOKEN`, etc.) are blocked.
+
+## Tool Naming Convention
+
+**Use snake_case** for ALL tool names:
+
+- ✅ `create_deck`, `get_due_cards`, `list_decks`, `rate_card`, `add_note`, `find_notes`
+- ❌ Avoid camelCase: `addNote`, `findNotes`, `notesInfo`
+
+## Tool Design Guidelines
+
+### Parameter Descriptions
+
+Always include in `.describe()`:
+
+- Default values: `"Maximum cards to return (default: 10, max: 50)"`
+- Format requirements: `"MUST pass as object, NOT as JSON string"`
+- Examples when helpful: `'Use "::" for nested structure (e.g., "Parent::Child")'`
+
+### Error Responses
+
+Use `createErrorResponse()` with:
+
+```typescript
+return createErrorResponse(error, {
+  hint: "Actionable suggestion for the user",
+  // Optional: help LLM decide next action
+  errorType: "CONNECTION_ERROR" | "VALIDATION_ERROR" | "NOT_FOUND",
+  recoverable: true,
+});
+```
+
+### Batch Operations
+
+- Limit batch sizes (10 for notes, 100 for tags)
+- Support `stopOnFirstError` parameter for debugging
+- Return per-item results for partial success handling
+
+### JSON Parameter Handling
+
+Tools accepting complex objects should:
+
+1. Accept both object and JSON string formats
+2. Use `safeJsonParse()` from `schema.utils.ts` for detailed error messages
+3. Include recovery for common issues (double-escaping, smart quotes)

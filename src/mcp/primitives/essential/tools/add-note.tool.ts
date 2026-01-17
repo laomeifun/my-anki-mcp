@@ -8,28 +8,29 @@ import {
   createSuccessResponse,
   createErrorResponse,
 } from "@/mcp/utils/anki.utils";
+import { safeJsonParse } from "@/mcp/utils/schema.utils";
+
+const isFieldsObject = (val: unknown): val is Record<string, string> =>
+  typeof val === "object" && val !== null && !Array.isArray(val);
 
 const FieldsSchema = z
   .union([
     z.record(z.string(), z.string()),
     z.string().transform((str) => {
-      try {
-        const parsed = JSON.parse(str);
-        if (
-          typeof parsed === "object" &&
-          parsed !== null &&
-          !Array.isArray(parsed)
-        ) {
-          return parsed as Record<string, string>;
-        }
-        throw new Error("Not an object");
-      } catch {
-        throw new Error("Invalid JSON string for fields");
+      const result = safeJsonParse<Record<string, string>>(str, "fields");
+      if (!result.success) {
+        throw new Error(result.error);
       }
+      if (!isFieldsObject(result.data)) {
+        throw new Error(
+          "Invalid fields: expected object but got array or primitive",
+        );
+      }
+      return result.data;
     }),
   ])
   .describe(
-    'Field values as key-value pairs (e.g., {"Front": "question", "Back": "answer"})',
+    'MUST pass as object, NOT as JSON string. Example: {"Front": "question", "Back": "answer"}',
   );
 
 /**
@@ -112,22 +113,23 @@ export class AddNoteTool {
   ) {
     let parsedFields: Record<string, string>;
     if (typeof fields === "string") {
-      try {
-        parsedFields = JSON.parse(fields);
-      } catch {
-        return createErrorResponse(
-          new Error(
-            "Invalid fields parameter: expected object or valid JSON string",
-          ),
-          { hint: "Pass fields as an object, not a string" },
-        );
+      const parseResult = safeJsonParse<Record<string, string>>(
+        fields,
+        "fields",
+      );
+      if (!parseResult.success) {
+        return createErrorResponse(new Error(parseResult.error!), {
+          hint: "Check for unescaped quotes or special characters in field values",
+          ...(parseResult.snippet && { errorContext: parseResult.snippet }),
+        });
       }
-      if (typeof parsedFields !== "object" || Array.isArray(parsedFields)) {
+      if (!isFieldsObject(parseResult.data)) {
         return createErrorResponse(
           new Error("Invalid fields parameter: parsed value is not an object"),
           { hint: "fields must be an object with field name keys" },
         );
       }
+      parsedFields = parseResult.data;
     } else {
       parsedFields = fields;
     }

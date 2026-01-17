@@ -41,7 +41,7 @@
       "description": "Show all available Anki decks with their statistics"
     },
     {
-      "name": "createDeck",
+      "name": "create_deck",
       "description": "Create a new empty deck in Anki. IMPORTANT: This tool ONLY creates an empty deck. DO NOT add cards or notes after creating a deck unless the user EXPLICITLY asks to add them"
     },
     {
@@ -50,7 +50,7 @@
     },
     {
       "name": "addNotes",
-      "description": "Add multiple notes to Anki in a single batch operation (max 25). Returns detailed results showing which notes succeeded or failed. IMPORTANT: Only create notes that were explicitly requested by the user"
+      "description": "Add multiple notes to Anki in a single batch operation (max 10). Returns detailed results showing which notes succeeded or failed. Supports stopOnFirstError for debugging. IMPORTANT: Only create notes that were explicitly requested by the user"
     },
     {
       "name": "findNotes",
@@ -63,6 +63,10 @@
     {
       "name": "updateNoteFields",
       "description": "Update existing note fields with support for HTML content. IMPORTANT: Only update notes that the user explicitly asked to modify"
+    },
+    {
+      "name": "update_notes_fields",
+      "description": "Update fields for multiple notes in a single batch operation (max 10). Returns detailed results showing which notes succeeded or failed. Supports stopOnFirstError for debugging. IMPORTANT: Only update notes that the user explicitly asked to modify"
     },
     {
       "name": "deleteNotes",
@@ -98,7 +102,7 @@
     },
     {
       "name": "tagActions",
-      "description": "Manage tags on Anki notes. Actions: addTags (add tags to notes), removeTags (remove tags from notes), replaceTags (rename a tag), clearUnusedTags (remove orphaned tags). Use getTags to discover existing tags first"
+      "description": "Manage tags on Anki notes (max 100 notes per call). Actions: addTags (add tags to notes), removeTags (remove tags from notes), replaceTags (rename a tag), clearUnusedTags (remove orphaned tags). Use getTags to discover existing tags first"
     }
   ],
   "prompts_generated": true,
