@@ -8,7 +8,6 @@ import {
   createErrorResponse,
 } from "@/mcp/utils/anki.utils";
 import type { CardTemplate } from "@/mcp/types/anki.types";
-import { jsonArraySchema } from "@/mcp/utils/schema.utils";
 
 /**
  * Tool for creating a new Anki model/note type
@@ -32,33 +31,38 @@ export class CreateModelTool {
         .describe(
           'Unique name for the new model (e.g., "Basic RTL", "Advanced Vocabulary")',
         ),
-      inOrderFields: jsonArraySchema(z.string().min(1), {
-        min: 1,
-        description:
-          'Field names in order (e.g., ["Front", "Back"]). At least one field required.',
-      }),
-      cardTemplates: jsonArraySchema(
-        z.object({
-          Name: z.string().min(1).describe('Template name (e.g., "Card 1")'),
-          Front: z
-            .string()
-            .min(1)
-            .describe(
-              'Front template HTML with field placeholders (e.g., "{{Front}}")',
-            ),
-          Back: z
-            .string()
-            .min(1)
-            .describe(
-              'Back template HTML with field placeholders (e.g., "{{FrontSide}}<hr id=answer>{{Back}}")',
-            ),
-        }),
-        {
-          min: 1,
-          description:
-            "Card templates (at least one required). Each template generates one card per note.",
-        },
-      ),
+      inOrderFields: z
+        .array(z.string().min(1))
+        .min(1)
+        .describe(
+          "Field names in order. IMPORTANT: Pass as a native array of strings, NOT a JSON string. " +
+            'Example: ["Front", "Back"]. At least one field required. ' +
+            "If you are an LLM, do NOT serialize this to a JSON string - pass the array directly.",
+        ),
+      cardTemplates: z
+        .array(
+          z.object({
+            Name: z.string().min(1).describe('Template name (e.g., "Card 1")'),
+            Front: z
+              .string()
+              .min(1)
+              .describe(
+                'Front template HTML with field placeholders (e.g., "{{Front}}")',
+              ),
+            Back: z
+              .string()
+              .min(1)
+              .describe(
+                'Back template HTML with field placeholders (e.g., "{{FrontSide}}<hr id=answer>{{Back}}")',
+              ),
+          }),
+        )
+        .min(1)
+        .describe(
+          "Card templates (at least one required). IMPORTANT: Pass as a native array of objects, NOT a JSON string. " +
+            "Each template generates one card per note. " +
+            "If you are an LLM, do NOT serialize this to a JSON string - pass the array directly.",
+        ),
       css: z
         .string()
         .optional()

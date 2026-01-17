@@ -8,8 +8,6 @@ import {
   createSuccessResponse,
   createErrorResponse,
 } from "@/mcp/utils/anki.utils";
-import { safeJsonParse } from "@/mcp/utils/schema.utils";
-
 const NoteInputSchema = z.object({
   deckName: z.string().min(1).describe("The deck to add the note to"),
   modelName: z
@@ -19,7 +17,8 @@ const NoteInputSchema = z.object({
   fields: z
     .record(z.string(), z.string())
     .describe(
-      'MUST pass as object, NOT as JSON string. Example: {"Front": "question", "Back": "answer"}',
+      "Field name-value pairs. Pass as a native object, NOT a JSON string. " +
+        'Example: {"Front": "question", "Back": "answer"}',
     ),
   tags: z
     .array(z.string())
@@ -57,23 +56,13 @@ const NoteInputSchema = z.object({
 type NoteInput = z.infer<typeof NoteInputSchema>;
 
 const NotesArraySchema = z
-  .union([
-    z.array(NoteInputSchema).min(1).max(10),
-    z.string().transform((str) => {
-      const result = safeJsonParse<NoteInput[]>(str, "notes array");
-      if (!result.success) {
-        throw new Error(result.error);
-      }
-      if (!Array.isArray(result.data)) {
-        throw new Error(
-          "Invalid notes: expected array but got object or primitive",
-        );
-      }
-      return result.data;
-    }),
-  ])
+  .array(NoteInputSchema)
+  .min(1)
+  .max(10)
   .describe(
-    "MUST pass as array of objects, NOT as JSON string. Max 10 notes per call. Each note requires deckName, modelName, and fields object.",
+    "Array of note objects. IMPORTANT: Pass as a native array of objects, NOT a JSON string. " +
+      "Max 10 notes per call. Each note requires: deckName (string), modelName (string), fields (object). " +
+      "If you are an LLM, do NOT serialize this to a JSON string - pass the array directly.",
   );
 
 /**
@@ -126,38 +115,17 @@ export class AddNotesTool {
     {
       notes,
       stopOnFirstError = false,
-    }: { notes: NoteInput[] | string; stopOnFirstError?: boolean },
+    }: { notes: NoteInput[]; stopOnFirstError?: boolean },
     context: Context,
   ) {
-    // Fallback: handle notes passed as JSON string (for direct method calls or MCP clients)
-    let parsedNotes: NoteInput[];
-    if (typeof notes === "string") {
-      const parseResult = safeJsonParse<NoteInput[]>(notes, "notes");
-      if (!parseResult.success) {
-        return createErrorResponse(new Error(parseResult.error!), {
-          hint: "Check for unescaped quotes or special characters in field values",
-          ...(parseResult.snippet && { errorContext: parseResult.snippet }),
-        });
-      }
-      if (!Array.isArray(parseResult.data)) {
-        return createErrorResponse(
-          new Error("Invalid notes parameter: parsed value is not an array"),
-          { hint: "notes must be an array of note objects" },
-        );
-      }
-      parsedNotes = parseResult.data;
-    } else {
-      parsedNotes = notes;
-    }
-
     try {
       this.logger.log(
-        `Adding ${parsedNotes.length} note(s) in batch (stopOnFirstError: ${stopOnFirstError})`,
+        `Adding ${notes.length} note(s) in batch (stopOnFirstError: ${stopOnFirstError})`,
       );
       await context.reportProgress({ progress: 10, total: 100 });
 
       // Step 1: Fetch model field names for all unique models to identify primary fields
-      const uniqueModels = [...new Set(parsedNotes.map((n) => n.modelName))];
+      const uniqueModels = [...new Set(notes.map((n) => n.modelName))];
       const modelFieldsMap = new Map<string, string[]>();
 
       for (const modelName of uniqueModels) {
@@ -185,8 +153,8 @@ export class AddNotesTool {
         noteInfo: { deckName: string; modelName: string };
       }> = [];
 
-      for (let i = 0; i < parsedNotes.length; i++) {
-        const note = parsedNotes[i];
+      for (let i = 0; i < notes.length; i++) {
+        const note = notes[i];
         const modelFields = modelFieldsMap.get(note.modelName)!;
         const primaryField = modelFields[0];
         const primaryValue = note.fields[primaryField];
@@ -220,7 +188,7 @@ export class AddNotesTool {
       // If we have validation errors and didn't stop early, report them all
       if (
         validationErrors.length > 0 &&
-        validationErrors.length === parsedNotes.length
+        validationErrors.length === notes.length
       ) {
         return createErrorResponse(new Error("All notes failed validation"), {
           validationErrors,
@@ -230,11 +198,11 @@ export class AddNotesTool {
 
       // Filter out invalid notes for processing
       const validNoteIndices = new Set(
-        parsedNotes
+        notes
           .map((_, i) => i)
           .filter((i) => !validationErrors.some((e) => e.index === i)),
       );
-      const validNotes = parsedNotes.filter((_, i) => validNoteIndices.has(i));
+      const validNotes = notes.filter((_, i) => validNoteIndices.has(i));
 
       // If no valid notes remain, return error
       if (validNotes.length === 0) {
@@ -242,7 +210,7 @@ export class AddNotesTool {
           new Error("No valid notes to add after validation"),
           {
             validationErrors,
-            hint: `All ${parsedNotes.length} notes failed validation. Check primary field values.`,
+            hint: `All ${notes.length} notes failed validation. Check primary field values.`,
           },
         );
       }
@@ -343,9 +311,9 @@ export class AddNotesTool {
       // Step 5: Build response based on outcome
       if (successCount === 0) {
         // All failed
-        this.logger.warn(`All ${parsedNotes.length} notes failed to create`);
+        this.logger.warn(`All ${notes.length} notes failed to create`);
         return createErrorResponse(new Error("All notes failed to create"), {
-          totalRequested: parsedNotes.length,
+          totalRequested: notes.length,
           successCount: 0,
           failedCount,
           results,
@@ -357,14 +325,14 @@ export class AddNotesTool {
       const createdNoteIds = successfulNotes.map((r) => r.noteId);
       const message =
         failedCount > 0
-          ? `Created ${successCount} of ${parsedNotes.length} notes. ${failedCount} note(s) failed.`
+          ? `Created ${successCount} of ${notes.length} notes. ${failedCount} note(s) failed.`
           : `Successfully created all ${successCount} notes`;
 
       this.logger.log(message);
 
       return createSuccessResponse({
         success: true,
-        totalRequested: parsedNotes.length,
+        totalRequested: notes.length,
         successCount,
         failedCount,
         noteIds: createdNoteIds,
@@ -380,22 +348,20 @@ export class AddNotesTool {
       if (error instanceof Error) {
         if (error.message.includes("model")) {
           return createErrorResponse(error, {
-            totalRequested: parsedNotes.length,
+            totalRequested: notes.length,
             hint: "One or more models not found. Use modelNames tool to see available models.",
           });
         }
         if (error.message.includes("deck")) {
           return createErrorResponse(error, {
-            totalRequested: parsedNotes.length,
+            totalRequested: notes.length,
             hint: "One or more decks not found. Use list_decks tool to see available decks or createDeck to create new ones.",
           });
         }
         if (error.message.includes("field")) {
-          const uniqueModels = [
-            ...new Set(parsedNotes.map((n) => n.modelName)),
-          ];
+          const uniqueModels = [...new Set(notes.map((n) => n.modelName))];
           return createErrorResponse(error, {
-            totalRequested: parsedNotes.length,
+            totalRequested: notes.length,
             modelsUsed: uniqueModels,
             hint: "Field name mismatch. Use modelFieldNames tool to see required fields for each model. Common models: Basic (Front, Back), Cloze (Text, Back Extra), Basic (and reversed card) (Front, Back).",
           });
@@ -403,7 +369,7 @@ export class AddNotesTool {
       }
 
       return createErrorResponse(error, {
-        totalRequested: parsedNotes.length,
+        totalRequested: notes.length,
         hint: "Make sure Anki is running and all deck/model names are correct",
       });
     }

@@ -8,7 +8,6 @@ import {
   createErrorResponse,
 } from "@/mcp/utils/anki.utils";
 import { NoteInfo } from "@/mcp/types/anki.types";
-import { jsonArraySchema } from "@/mcp/utils/schema.utils";
 
 /**
  * Tool for retrieving detailed information about notes
@@ -25,13 +24,16 @@ export class NotesInfoTool {
       "Get detailed information about specific notes including all fields, tags, model info, and CSS styling. " +
       "Use this after findNotes to get complete note data. Includes CSS for proper rendering awareness.",
     parameters: z.object({
-      notes: jsonArraySchema(z.number(), {
-        min: 1,
-        max: 100,
-        description:
+      notes: z
+        .array(z.number())
+        .min(1)
+        .max(100)
+        .describe(
           "Array of note IDs to get information for (max 100 at once for performance). " +
-          "Get these IDs from findNotes tool.",
-      }),
+            "IMPORTANT: Pass as a native array of numbers, NOT a JSON string. " +
+            "Get these IDs from findNotes tool. Example: [1234567890, 1234567891]. " +
+            "If you are an LLM, do NOT serialize this to a JSON string - pass the array directly.",
+        ),
     }),
     annotations: {
       readOnlyHint: true,
@@ -40,30 +42,14 @@ export class NotesInfoTool {
       openWorldHint: false,
     },
   })
-  async notesInfo({ notes }: { notes: number[] | string }, context: Context) {
-    let parsedNotes: number[];
-    if (typeof notes === "string") {
-      try {
-        parsedNotes = JSON.parse(notes);
-      } catch {
-        return createErrorResponse(
-          new Error(
-            "Invalid notes parameter: expected array or valid JSON string",
-          ),
-          { hint: "Pass notes as an array of note IDs" },
-        );
-      }
-    } else {
-      parsedNotes = notes;
-    }
-
+  async notesInfo({ notes }: { notes: number[] }, context: Context) {
     try {
-      this.logger.log(`Getting information for ${parsedNotes.length} note(s)`);
+      this.logger.log(`Getting information for ${notes.length} note(s)`);
       await context.reportProgress({ progress: 25, total: 100 });
 
       // Call AnkiConnect notesInfo action
       const notesData = await this.ankiClient.invoke<any[]>("notesInfo", {
-        notes: parsedNotes,
+        notes: notes,
       });
 
       await context.reportProgress({ progress: 75, total: 100 });
@@ -73,7 +59,7 @@ export class NotesInfoTool {
         await context.reportProgress({ progress: 100, total: 100 });
 
         return createErrorResponse(new Error("No note information found"), {
-          requestedNotes: parsedNotes,
+          requestedNotes: notes,
           hint: "The note IDs may be invalid or the notes may have been deleted",
         });
       }
@@ -90,7 +76,7 @@ export class NotesInfoTool {
 
       // Filter out any null results (deleted notes)
       const validNotes = transformedNotes.filter((note) => note.noteId);
-      const deletedCount = parsedNotes.length - validNotes.length;
+      const deletedCount = notes.length - validNotes.length;
 
       await context.reportProgress({ progress: 100, total: 100 });
 
@@ -125,14 +111,14 @@ export class NotesInfoTool {
       if (error instanceof Error) {
         if (error.message.includes("not found")) {
           return createErrorResponse(error, {
-            requestedNotes: parsedNotes,
+            requestedNotes: notes,
             hint: "One or more note IDs are invalid. Use findNotes to get valid note IDs.",
           });
         }
       }
 
       return createErrorResponse(error, {
-        requestedNotes: parsedNotes,
+        requestedNotes: notes,
         hint: "Make sure Anki is running and the note IDs are valid",
       });
     }

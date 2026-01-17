@@ -8,29 +8,13 @@ import {
   createSuccessResponse,
   createErrorResponse,
 } from "@/mcp/utils/anki.utils";
-import { safeJsonParse } from "@/mcp/utils/schema.utils";
-
-const isFieldsObject = (val: unknown): val is Record<string, string> =>
-  typeof val === "object" && val !== null && !Array.isArray(val);
 
 const FieldsSchema = z
-  .union([
-    z.record(z.string(), z.string()),
-    z.string().transform((str) => {
-      const result = safeJsonParse<Record<string, string>>(str, "fields");
-      if (!result.success) {
-        throw new Error(result.error);
-      }
-      if (!isFieldsObject(result.data)) {
-        throw new Error(
-          "Invalid fields: expected object but got array or primitive",
-        );
-      }
-      return result.data;
-    }),
-  ])
+  .record(z.string(), z.string())
   .describe(
-    'MUST pass as object, NOT as JSON string. Example: {"Front": "question", "Back": "answer"}',
+    "Field name-value pairs. Pass as a native object, NOT a JSON string. " +
+      'Example: {"Front": "question", "Back": "answer"}. ' +
+      "If you are an LLM, do NOT serialize this to a JSON string - pass the object directly.",
   );
 
 /**
@@ -105,7 +89,7 @@ export class AddNoteTool {
     }: {
       deckName: string;
       modelName: string;
-      fields: Record<string, string> | string;
+      fields: Record<string, string>;
       tags?: string[];
       allowDuplicate?: boolean;
       duplicateScope?: "deck" | "collection";
@@ -117,29 +101,6 @@ export class AddNoteTool {
     },
     context: Context,
   ) {
-    let parsedFields: Record<string, string>;
-    if (typeof fields === "string") {
-      const parseResult = safeJsonParse<Record<string, string>>(
-        fields,
-        "fields",
-      );
-      if (!parseResult.success) {
-        return createErrorResponse(new Error(parseResult.error!), {
-          hint: "Check for unescaped quotes or special characters in field values",
-          ...(parseResult.snippet && { errorContext: parseResult.snippet }),
-        });
-      }
-      if (!isFieldsObject(parseResult.data)) {
-        return createErrorResponse(
-          new Error("Invalid fields parameter: parsed value is not an object"),
-          { hint: "fields must be an object with field name keys" },
-        );
-      }
-      parsedFields = parseResult.data;
-    } else {
-      parsedFields = fields;
-    }
-
     try {
       // Get model field names to identify the primary (first) field
       const modelFields = await this.ankiClient.invoke<string[]>(
@@ -161,7 +122,7 @@ export class AddNoteTool {
       // Validate only the primary (first) field is not empty
       // AnkiConnect requires the first field to have content for duplicate checking
       const primaryField = modelFields[0];
-      const primaryValue = parsedFields[primaryField];
+      const primaryValue = fields[primaryField];
 
       if (!primaryValue || primaryValue.trim() === "") {
         return createErrorResponse(
@@ -186,7 +147,7 @@ export class AddNoteTool {
       const noteParams: any = {
         deckName: deckName,
         modelName: modelName,
-        fields: parsedFields,
+        fields: fields,
       };
 
       // Add tags if provided
@@ -245,7 +206,7 @@ export class AddNoteTool {
       await context.reportProgress({ progress: 100, total: 100 });
       this.logger.log(`Successfully created note with ID: ${noteId}`);
 
-      const fieldCount = Object.keys(parsedFields).length;
+      const fieldCount = Object.keys(fields).length;
       const tagCount = tags ? tags.length : 0;
 
       return createSuccessResponse({
@@ -283,7 +244,7 @@ export class AddNoteTool {
           return createErrorResponse(error, {
             deckName,
             modelName,
-            providedFields: Object.keys(parsedFields),
+            providedFields: Object.keys(fields),
             hint: "Field mismatch. Use modelFieldNames tool to see required fields for this model.",
           });
         }

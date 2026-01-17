@@ -7,7 +7,6 @@ import {
   createSuccessResponse,
   createErrorResponse,
 } from "@/mcp/utils/anki.utils";
-import { safeJsonParse } from "@/mcp/utils/schema.utils";
 
 const NoteUpdateSchema = z.object({
   id: z
@@ -18,7 +17,9 @@ const NoteUpdateSchema = z.object({
   fields: z
     .record(z.string(), z.string())
     .describe(
-      'MUST pass as object, NOT as JSON string. Only include fields to update. Example: {"Front": "<b>New</b>", "Back": "Updated"}',
+      "Field name-value pairs to update. Pass as a native object, NOT a JSON string. " +
+        'Only include fields you want to change. Example: {"Front": "<b>New</b>", "Back": "Updated"}. ' +
+        "If you are an LLM, do NOT serialize this to a JSON string - pass the object directly.",
     ),
   audio: z
     .array(
@@ -45,23 +46,13 @@ const NoteUpdateSchema = z.object({
 type NoteUpdate = z.infer<typeof NoteUpdateSchema>;
 
 const NotesUpdateArraySchema = z
-  .union([
-    z.array(NoteUpdateSchema).min(1).max(10),
-    z.string().transform((str) => {
-      const result = safeJsonParse<NoteUpdate[]>(str, "notes array");
-      if (!result.success) {
-        throw new Error(result.error);
-      }
-      if (!Array.isArray(result.data)) {
-        throw new Error(
-          "Invalid notes: expected array but got object or primitive",
-        );
-      }
-      return result.data;
-    }),
-  ])
+  .array(NoteUpdateSchema)
+  .min(1)
+  .max(10)
   .describe(
-    "MUST pass as array of objects, NOT as JSON string. Max 10 notes per call. Each update requires id and fields object.",
+    "Array of note update objects. IMPORTANT: Pass as a native array of objects, NOT a JSON string. " +
+      "Max 10 notes per call. Each update requires: id (number), fields (object). " +
+      "If you are an LLM, do NOT serialize this to a JSON string - pass the array directly.",
   );
 
 interface NoteUpdateResult {
@@ -108,40 +99,20 @@ export class UpdateNotesFieldsTool {
     {
       notes,
       stopOnFirstError = false,
-    }: { notes: NoteUpdate[] | string; stopOnFirstError?: boolean },
+    }: { notes: NoteUpdate[]; stopOnFirstError?: boolean },
     context: Context,
   ) {
-    let parsedNotes: NoteUpdate[];
-    if (typeof notes === "string") {
-      const parseResult = safeJsonParse<NoteUpdate[]>(notes, "notes");
-      if (!parseResult.success) {
-        return createErrorResponse(new Error(parseResult.error!), {
-          hint: "Check for unescaped quotes or special characters in field values",
-          ...(parseResult.snippet && { errorContext: parseResult.snippet }),
-        });
-      }
-      if (!Array.isArray(parseResult.data)) {
-        return createErrorResponse(
-          new Error("Invalid notes parameter: parsed value is not an array"),
-          { hint: "notes must be an array of note update objects" },
-        );
-      }
-      parsedNotes = parseResult.data;
-    } else {
-      parsedNotes = notes;
-    }
-
     try {
       this.logger.log(
-        `Updating ${parsedNotes.length} note(s) in batch (stopOnFirstError: ${stopOnFirstError})`,
+        `Updating ${notes.length} note(s) in batch (stopOnFirstError: ${stopOnFirstError})`,
       );
       await context.reportProgress({ progress: 10, total: 100 });
 
       const results: NoteUpdateResult[] = [];
-      const progressPerNote = 80 / parsedNotes.length;
+      const progressPerNote = 80 / notes.length;
 
-      for (let i = 0; i < parsedNotes.length; i++) {
-        const noteUpdate = parsedNotes[i];
+      for (let i = 0; i < notes.length; i++) {
+        const noteUpdate = notes[i];
         const fieldCount = Object.keys(noteUpdate.fields).length;
 
         if (fieldCount === 0) {
@@ -296,9 +267,9 @@ export class UpdateNotesFieldsTool {
       const failedCount = failedUpdates.length;
 
       if (successCount === 0) {
-        this.logger.warn(`All ${parsedNotes.length} note updates failed`);
+        this.logger.warn(`All ${notes.length} note updates failed`);
         return createErrorResponse(new Error("All note updates failed"), {
-          totalRequested: parsedNotes.length,
+          totalRequested: notes.length,
           successCount: 0,
           failedCount,
           results,
@@ -308,14 +279,14 @@ export class UpdateNotesFieldsTool {
 
       const message =
         failedCount > 0
-          ? `Updated ${successCount} of ${parsedNotes.length} notes. ${failedCount} note(s) failed.`
+          ? `Updated ${successCount} of ${notes.length} notes. ${failedCount} note(s) failed.`
           : `Successfully updated all ${successCount} notes`;
 
       this.logger.log(message);
 
       return createSuccessResponse({
         success: true,
-        totalRequested: parsedNotes.length,
+        totalRequested: notes.length,
         successCount,
         failedCount,
         results,
@@ -330,7 +301,7 @@ export class UpdateNotesFieldsTool {
       this.logger.error("Failed to update notes", error);
 
       return createErrorResponse(error, {
-        totalRequested: parsedNotes.length,
+        totalRequested: notes.length,
         hint: "Make sure Anki is running and the note IDs are valid",
       });
     }

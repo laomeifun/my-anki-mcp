@@ -156,36 +156,6 @@ describe("UpdateNotesFieldsTool", () => {
       expect(result.failedCount).toBe(2);
     });
 
-    it("should handle JSON string input", async () => {
-      const noteUpdates = JSON.stringify([
-        { id: mockNotes.spanish.noteId, fields: { Front: "Updated" } },
-      ]);
-
-      ankiClient.invoke
-        .mockResolvedValueOnce([mockNotes.spanish])
-        .mockResolvedValueOnce(null);
-
-      const rawResult = await tool.updateNotesFields(
-        { notes: noteUpdates },
-        mockContext,
-      );
-      const result = parseToolResult(rawResult);
-
-      expect(result.success).toBe(true);
-      expect(result.successCount).toBe(1);
-    });
-
-    it("should reject invalid JSON string", async () => {
-      const rawResult = await tool.updateNotesFields(
-        { notes: "not valid json" },
-        mockContext,
-      );
-      const result = parseToolResult(rawResult);
-
-      expect(result.success).toBe(false);
-      expect(result.error).toContain("JSON parse error");
-    });
-
     it("should handle network errors gracefully", async () => {
       const noteUpdates = [
         { id: mockNotes.spanish.noteId, fields: { Front: "Updated" } },

@@ -909,64 +909,6 @@ describe("AddNotesTool", () => {
     });
   });
 
-  describe("JSON String Input Robustness", () => {
-    it("should auto-parse notes when passed as JSON string", async () => {
-      // Given: notes parameter passed as JSON string (common MCP client bug)
-      const notesArray = [makeNote()];
-      const notesAsString = JSON.stringify(notesArray);
-      setupModelFieldNamesMock([1234567890]);
-
-      // When: calling addNotes with string input (bypassing TypeScript)
-      const rawResult = await tool.addNotes(
-        { notes: notesAsString as unknown as typeof notesArray },
-        mockContext,
-      );
-      const result = parseToolResult(rawResult);
-
-      // Then: should successfully parse and add the note
-      expect(result.success).toBe(true);
-      expect(result.noteIds).toEqual([1234567890]);
-    });
-
-    it("should auto-parse complex notes array from JSON string", async () => {
-      // Given: multiple notes with various fields as JSON string
-      const notesArray = [
-        makeNote({ fields: { Front: "Q1", Back: "A1" }, tags: ["tag1"] }),
-        makeNote({ deckName: "Custom", fields: { Front: "Q2", Back: "A2" } }),
-      ];
-      const notesAsString = JSON.stringify(notesArray);
-      setupModelFieldNamesMock([111, 222]);
-
-      // When: calling with string input
-      const rawResult = await tool.addNotes(
-        { notes: notesAsString as unknown as typeof notesArray },
-        mockContext,
-      );
-      const result = parseToolResult(rawResult);
-
-      // Then: should successfully add both notes
-      expect(result.success).toBe(true);
-      expect(result.successCount).toBe(2);
-      expect(result.noteIds).toEqual([111, 222]);
-    });
-
-    it("should fail gracefully when notes string is invalid JSON", async () => {
-      // Given: invalid JSON string
-      const invalidJson = "[{invalid json}]";
-      setupModelFieldNamesMock([]);
-
-      // When: calling with invalid JSON string
-      const rawResult = await tool.addNotes(
-        { notes: invalidJson as unknown as never[] },
-        mockContext,
-      );
-      const result = parseToolResult(rawResult);
-
-      // Then: should fail with validation error (Zod will report the error)
-      expect(result.success).toBe(false);
-    });
-  });
-
   describe("Field Mismatch Handling", () => {
     it("should handle field name mismatch error with helpful hint", async () => {
       const notes = [

@@ -17,8 +17,9 @@ const NoteUpdateSchema = z.object({
   fields: z
     .record(z.string(), z.string())
     .describe(
-      "Fields to update with new content. Only include fields you want to change. " +
-        'HTML content is supported. Example: {"Front": "<b>New question</b>", "Back": "New answer"}',
+      "Field name-value pairs to update. Pass as a native object, NOT a JSON string. " +
+        'Only include fields you want to change. HTML content is supported. Example: {"Front": "<b>New question</b>", "Back": "New answer"}. ' +
+        "If you are an LLM, do NOT serialize this to a JSON string - pass the object directly.",
     ),
   audio: z
     .array(
@@ -44,27 +45,6 @@ const NoteUpdateSchema = z.object({
 
 type NoteUpdate = z.infer<typeof NoteUpdateSchema>;
 
-const NoteUpdateParamSchema = z
-  .union([
-    NoteUpdateSchema,
-    z.string().transform((str) => {
-      try {
-        const parsed = JSON.parse(str);
-        if (
-          typeof parsed === "object" &&
-          parsed !== null &&
-          !Array.isArray(parsed)
-        ) {
-          return parsed as NoteUpdate;
-        }
-        throw new Error("Not an object");
-      } catch {
-        throw new Error("Invalid JSON string for note parameter");
-      }
-    }),
-  ])
-  .describe("Note object containing id, fields, and optional audio/picture");
-
 /**
  * Tool for updating fields of existing notes
  */
@@ -81,7 +61,11 @@ export class UpdateNoteFieldsTool {
       "WARNING: Do not view the note in Anki browser while updating, or the fields will not update properly. " +
       "Close the browser or switch to a different note before updating. IMPORTANT: Only update notes that the user explicitly asked to modify.",
     parameters: z.object({
-      note: NoteUpdateParamSchema,
+      note: NoteUpdateSchema.describe(
+        "Note update object. IMPORTANT: Pass as a native object, NOT a JSON string. " +
+          'Requires id (number) and fields (object). Example: {id: 123, fields: {"Front": "new content"}}. ' +
+          "If you are an LLM, do NOT serialize this to a JSON string - pass the object directly.",
+      ),
     }),
     annotations: {
       readOnlyHint: false,
@@ -94,36 +78,20 @@ export class UpdateNoteFieldsTool {
     {
       note,
     }: {
-      note: NoteUpdate | string;
+      note: NoteUpdate;
     },
     context: Context,
   ) {
-    let parsedNote: NoteUpdate;
-    if (typeof note === "string") {
-      try {
-        parsedNote = JSON.parse(note);
-      } catch {
-        return createErrorResponse(
-          new Error(
-            "Invalid note parameter: expected object or valid JSON string",
-          ),
-          { hint: "Pass note as an object with id and fields" },
-        );
-      }
-    } else {
-      parsedNote = note;
-    }
-
     try {
-      const fieldCount = Object.keys(parsedNote.fields).length;
+      const fieldCount = Object.keys(note.fields).length;
       this.logger.log(
-        `Updating ${fieldCount} field(s) for note ID: ${parsedNote.id}`,
+        `Updating ${fieldCount} field(s) for note ID: ${note.id}`,
       );
 
       // Validate that at least one field is being updated
       if (fieldCount === 0) {
         return createErrorResponse(new Error("No fields provided for update"), {
-          noteId: parsedNote.id,
+          noteId: note.id,
           hint: "Provide at least one field to update",
         });
       }
@@ -132,12 +100,12 @@ export class UpdateNoteFieldsTool {
 
       // First, let's get the current note info to validate it exists
       const notesInfo = await this.ankiClient.invoke<any[]>("notesInfo", {
-        notes: [parsedNote.id],
+        notes: [note.id],
       });
 
       if (!notesInfo || notesInfo.length === 0 || !notesInfo[0]) {
         return createErrorResponse(new Error("Note not found"), {
-          noteId: parsedNote.id,
+          noteId: note.id,
           hint: "The note ID is invalid or the note has been deleted. Use findNotes to get valid note IDs.",
         });
       }
@@ -147,7 +115,7 @@ export class UpdateNoteFieldsTool {
       const existingFields = Object.keys(currentNote.fields);
 
       // Validate that all provided fields exist in the model
-      const invalidFields = Object.keys(parsedNote.fields).filter(
+      const invalidFields = Object.keys(note.fields).filter(
         (field) => !existingFields.includes(field),
       );
 
@@ -155,7 +123,7 @@ export class UpdateNoteFieldsTool {
         return createErrorResponse(
           new Error(`Invalid fields for model "${modelName}"`),
           {
-            noteId: parsedNote.id,
+            noteId: note.id,
             modelName,
             invalidFields,
             validFields: existingFields,
@@ -169,31 +137,31 @@ export class UpdateNoteFieldsTool {
       // Build the update parameters
       const updateParams: any = {
         note: {
-          id: parsedNote.id,
-          fields: parsedNote.fields,
+          id: note.id,
+          fields: note.fields,
         },
       };
 
       // Add media if provided
-      if (parsedNote.audio) {
-        updateParams.note.audio = parsedNote.audio;
+      if (note.audio) {
+        updateParams.note.audio = note.audio;
       }
-      if (parsedNote.picture) {
-        updateParams.note.picture = parsedNote.picture;
+      if (note.picture) {
+        updateParams.note.picture = note.picture;
       }
 
       // Call AnkiConnect updateNoteFields action
       await this.ankiClient.invoke<null>("updateNoteFields", updateParams);
 
       await context.reportProgress({ progress: 100, total: 100 });
-      this.logger.log(`Successfully updated note ID: ${parsedNote.id}`);
+      this.logger.log(`Successfully updated note ID: ${note.id}`);
 
       // Get the list of updated fields for the response
-      const updatedFields = Object.keys(parsedNote.fields);
+      const updatedFields = Object.keys(note.fields);
 
       return createSuccessResponse({
         success: true,
-        noteId: parsedNote.id,
+        noteId: note.id,
         updatedFields,
         fieldCount,
         modelName,
@@ -210,21 +178,21 @@ export class UpdateNoteFieldsTool {
       if (error instanceof Error) {
         if (error.message.includes("not found")) {
           return createErrorResponse(error, {
-            noteId: parsedNote.id,
+            noteId: note.id,
             hint: "Note not found. It may have been deleted.",
           });
         }
         if (error.message.includes("field")) {
           return createErrorResponse(error, {
-            noteId: parsedNote.id,
-            providedFields: Object.keys(parsedNote.fields),
+            noteId: note.id,
+            providedFields: Object.keys(note.fields),
             hint: "Check field names match exactly (case-sensitive). Use notesInfo to see current fields.",
           });
         }
       }
 
       return createErrorResponse(error, {
-        noteId: parsedNote.id,
+        noteId: note.id,
         hint: "Make sure Anki is running and the note is not open in the browser",
       });
     }
