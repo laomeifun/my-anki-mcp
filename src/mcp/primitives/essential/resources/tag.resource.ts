@@ -13,7 +13,7 @@ export class TagResource {
     description:
       "List of all tags used across all notes in Anki. Use this to see existing tags before adding new ones.",
     mimeType: "application/json",
-    uri: "tag://list",
+    uri: "tag://tags/list",
   })
   async getTagList({ uri }: { uri: string }) {
     try {

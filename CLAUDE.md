@@ -156,6 +156,36 @@ The `env://{name}` resource restricts access to a safe allowlist:
 
 Sensitive variables (containing `KEY`, `SECRET`, `TOKEN`, etc.) are blocked.
 
+## Resource URI Design
+
+**Important**: `@rekog/mcp-nest` strips the protocol when matching resources, so all URIs share the same path namespace.
+
+### URI Structure
+
+All resource URIs must include a type prefix in the path to avoid conflicts:
+
+```
+{protocol}://{type}/{action}
+{protocol}://{type}/{param}/{action}
+```
+
+| Resource   | URI                          | Path (after stripping protocol) |
+| ---------- | ---------------------------- | ------------------------------- |
+| Deck list  | `deck://decks/list`          | `decks/list`                    |
+| Deck stats | `deck://decks/{name}/stats`  | `decks/{name}/stats`            |
+| Deck tree  | `deck://decks/tree`          | `decks/tree`                    |
+| Model list | `model://models/list`        | `models/list`                   |
+| Model info | `model://models/{name}/info` | `models/{name}/info`            |
+| Tag list   | `tag://tags/list`            | `tags/list`                     |
+
+### Why This Matters
+
+The framework uses `path-to-regexp` for matching and **ResourceTemplates take priority** over static Resources. Without unique path prefixes:
+
+- `deck://list` → path `list`
+- `model://{name}` → path `:name`
+- `:name` matches `list` → **Wrong handler called!**
+
 ## Tool Naming Convention
 
 **Use snake_case** for ALL tool names:

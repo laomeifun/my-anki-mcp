@@ -52,7 +52,7 @@ export class ModelResource {
     description:
       "List of all Anki note types (models) with their names. Use this to see available models before creating notes.",
     mimeType: "application/json",
-    uri: "model://list",
+    uri: "model://models/list",
   })
   async getModelList({ uri }: { uri: string }) {
     try {
@@ -106,7 +106,7 @@ export class ModelResource {
     description:
       "Get detailed information about a specific note type (model), including fields, templates, and CSS styling.",
     mimeType: "application/json",
-    uriTemplate: "model://{name}",
+    uriTemplate: "model://models/{name}/info",
   })
   async getModelInfo({ uri, name }: { uri: string; name: string }) {
     try {
@@ -134,7 +134,7 @@ export class ModelResource {
               text: JSON.stringify(
                 {
                   error: `Model "${decodedName}" not found`,
-                  hint: "Use model://list to see available models",
+                  hint: "Use model://models/list to see available models. Use model://models/{name}/info for model details.",
                 },
                 null,
                 2,
@@ -174,7 +174,7 @@ export class ModelResource {
               {
                 error: error instanceof Error ? error.message : String(error),
                 modelName: name,
-                hint: "Make sure the model name is correct. Use model://list to see available models.",
+                hint: "Make sure the model name is correct. Use model://models/list to see available models. Use model://models/{name}/info for model details.",
               },
               null,
               2,

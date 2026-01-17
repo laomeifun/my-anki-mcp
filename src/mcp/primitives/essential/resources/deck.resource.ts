@@ -28,7 +28,7 @@ export class DeckResource {
     description:
       "List of all Anki decks with their IDs. Use this to see available decks before creating notes or getting cards.",
     mimeType: "application/json",
-    uri: "deck://list",
+    uri: "deck://decks/list",
   })
   async getDeckList({ uri }: { uri: string }) {
     try {
@@ -86,7 +86,7 @@ export class DeckResource {
     description:
       "Get detailed statistics for a specific deck including new, learning, and review card counts. Use '::' for nested decks (e.g., 'Parent::Child').",
     mimeType: "application/json",
-    uriTemplate: "deck://{name}/stats",
+    uriTemplate: "deck://decks/{name}/stats",
   })
   async getDeckStats({ uri, name }: { uri: string; name: string }) {
     try {
@@ -109,7 +109,7 @@ export class DeckResource {
               text: JSON.stringify(
                 {
                   error: `Deck "${decodedName}" not found`,
-                  hint: "Use deck://list to see available decks",
+                  hint: "Use deck://decks/list to see available decks",
                 },
                 null,
                 2,
@@ -153,7 +153,7 @@ export class DeckResource {
               {
                 error: error instanceof Error ? error.message : String(error),
                 deckName: name,
-                hint: "Make sure the deck name is correct. Use deck://list to see available decks.",
+                hint: "Make sure the deck name is correct. Use deck://decks/list to see available decks.",
               },
               null,
               2,
@@ -169,7 +169,7 @@ export class DeckResource {
     description:
       "Get the hierarchical tree structure of all decks, showing parent-child relationships.",
     mimeType: "application/json",
-    uri: "deck://tree",
+    uri: "deck://decks/tree",
   })
   async getDeckTree({ uri }: { uri: string }) {
     try {
