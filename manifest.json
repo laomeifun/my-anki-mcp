@@ -7,13 +7,12 @@
   "description": "Model Context Protocol server for Anki spaced repetition flashcard application",
   "long_description": "Transform your Anki experience with natural language interaction - like having a private tutor. This MCP server enables AI assistants to interact with Anki, allowing them to explain concepts, make learning more engaging, provide context, and adapt to your learning style. Features include review sessions, deck management, note creation and editing, and more.\n\nRequires Anki with the AnkiConnect plugin installed.",
   "author": {
-    "name": "Anatoly Tarnavsky",
-    "email": "support@ankimcp.ai",
-    "url": "https://ankimcp.ai"
+    "name": "laomeifun",
+    "url": "https://github.com/laomeifun"
   },
-  "homepage": "https://ankimcp.io",
-  "documentation": "https://github.com/ankimcp/anki-mcp-server#readme",
-  "support": "https://github.com/ankimcp/anki-mcp-server/issues",
+  "homepage": "https://github.com/laomeifun/my-anki-mcp",
+  "documentation": "https://github.com/laomeifun/my-anki-mcp#readme",
+  "support": "https://github.com/laomeifun/my-anki-mcp/issues",
   "icon": "icon.png",
   "tools": [
     {

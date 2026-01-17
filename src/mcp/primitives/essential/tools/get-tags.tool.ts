@@ -14,7 +14,7 @@ import {
  * This helps AI agents discover existing tags before creating/updating notes,
  * preventing tag duplication and maintaining consistency.
  *
- * @see https://github.com/ankimcp/anki-mcp-server/issues/13
+ * @see https://github.com/laomeifun/my-anki-mcp/issues/13
  */
 @Injectable()
 export class GetTagsTool {
