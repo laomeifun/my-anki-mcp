@@ -18,7 +18,7 @@ export class FindNotesTool {
   constructor(private readonly ankiClient: AnkiConnectClient) {}
 
   @Tool({
-    name: "findNotes",
+    name: "find_notes",
     description:
       "Search for notes using Anki query syntax. Returns an array of note IDs matching the query. " +
       'Examples: "deck:Spanish", "tag:verb", "is:due", "front:hello", "added:1" (cards added today), ' +

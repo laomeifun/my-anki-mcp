@@ -20,7 +20,7 @@ export class CreateModelTool {
   constructor(private readonly ankiClient: AnkiConnectClient) {}
 
   @Tool({
-    name: "createModel",
+    name: "create_model",
     description:
       "Create a new note type (model) in Anki with custom fields, card templates, and styling. " +
       "Useful for creating specialized models like RTL (Right-to-Left) language models for Hebrew, Arabic, etc. " +

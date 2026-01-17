@@ -45,23 +45,23 @@
       "description": "Create a new empty deck in Anki. IMPORTANT: This tool ONLY creates an empty deck. DO NOT add cards or notes after creating a deck unless the user EXPLICITLY asks to add them"
     },
     {
-      "name": "addNote",
+      "name": "add_note",
       "description": "Create new notes with specified fields and tags. IMPORTANT: Only create notes that were explicitly requested by the user"
     },
     {
-      "name": "addNotes",
+      "name": "add_notes",
       "description": "Add multiple notes to Anki in a single batch operation (max 10). Returns detailed results showing which notes succeeded or failed. Supports stopOnFirstError for debugging. IMPORTANT: Only create notes that were explicitly requested by the user"
     },
     {
-      "name": "findNotes",
+      "name": "find_notes",
       "description": "Search for notes using Anki query syntax (deck:, tag:, is:due, etc.)"
     },
     {
-      "name": "notesInfo",
+      "name": "notes_info",
       "description": "Get detailed information about notes including fields, tags, and CSS styling"
     },
     {
-      "name": "updateNoteFields",
+      "name": "update_note_fields",
       "description": "Update existing note fields with support for HTML content. IMPORTANT: Only update notes that the user explicitly asked to modify"
     },
     {
@@ -69,40 +69,40 @@
       "description": "Update fields for multiple notes in a single batch operation (max 10). Returns detailed results showing which notes succeeded or failed. Supports stopOnFirstError for debugging. IMPORTANT: Only update notes that the user explicitly asked to modify"
     },
     {
-      "name": "deleteNotes",
+      "name": "delete_notes",
       "description": "Delete notes and all associated cards. CRITICAL: This is destructive and permanent - only delete notes the user explicitly confirmed for deletion"
     },
     {
-      "name": "modelNames",
+      "name": "model_names",
       "description": "List all available note types/models"
     },
     {
-      "name": "modelFieldNames",
+      "name": "model_field_names",
       "description": "Get field names for a specific note type"
     },
     {
-      "name": "getTags",
+      "name": "get_tags",
       "description": "Get all tags in the Anki collection. Helps discover existing tags before creating notes to prevent duplication"
     },
     {
-      "name": "modelStyling",
+      "name": "model_styling",
       "description": "Get CSS styling information for a note type"
     },
     {
-      "name": "createModel",
+      "name": "create_model",
       "description": "Create a new note type (model) with custom fields, card templates, and CSS styling. Useful for creating specialized models like RTL (Right-to-Left) language models for Hebrew, Arabic, etc."
     },
     {
-      "name": "updateModelStyling",
+      "name": "update_model_styling",
       "description": "Update the CSS styling for an existing note type. Changes apply to all cards using this model. Useful for adding RTL support or modifying appearance."
     },
     {
-      "name": "mediaActions",
-      "description": "Manage Anki media files (audio/images). Actions: storeMediaFile, retrieveMediaFile, getMediaFilesNames, deleteMediaFile. Perfect for workflows like ElevenLabs TTS → Anki audio flashcards"
+      "name": "media_actions",
+      "description": "Manage Anki media files (audio/images). Actions: storeMediaFile, retrieveMediaFile, getMediaFilesNames, deleteMediaFile. Perfect for workflows like ElevenLabs TTS -> Anki audio flashcards"
     },
     {
-      "name": "tagActions",
-      "description": "Manage tags on Anki notes (max 100 notes per call). Actions: addTags (add tags to notes), removeTags (remove tags from notes), replaceTags (rename a tag), clearUnusedTags (remove orphaned tags). Use getTags to discover existing tags first"
+      "name": "tag_actions",
+      "description": "Manage tags on Anki notes (max 100 notes per call). Actions: addTags (add tags to notes), removeTags (remove tags from notes), replaceTags (rename a tag), clearUnusedTags (remove orphaned tags). Use get_tags to discover existing tags first"
     }
   ],
   "prompts_generated": true,

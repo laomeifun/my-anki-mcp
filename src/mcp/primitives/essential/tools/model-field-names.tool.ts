@@ -18,7 +18,7 @@ export class ModelFieldNamesTool {
   constructor(private readonly ankiClient: AnkiConnectClient) {}
 
   @Tool({
-    name: "modelFieldNames",
+    name: "model_field_names",
     description:
       "Get the field names for a specific note type (model). Use this to know what fields are required when creating notes of this type.",
     parameters: z.object({

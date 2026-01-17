@@ -99,7 +99,7 @@ export class AddNotesTool {
   constructor(private readonly ankiClient: AnkiConnectClient) {}
 
   @Tool({
-    name: "addNotes",
+    name: "add_notes",
     description:
       "Add multiple notes to Anki in a single batch operation. Supports up to 10 notes per call (for larger batches, call multiple times). " +
       "Returns detailed results showing which notes succeeded or failed (partial failures are possible). " +

@@ -18,7 +18,7 @@ export class UpdateModelStylingTool {
   constructor(private readonly ankiClient: AnkiConnectClient) {}
 
   @Tool({
-    name: "updateModelStyling",
+    name: "update_model_styling",
     description:
       "Update the CSS styling for an existing note type (model). " +
       "This changes how cards of this type are rendered in Anki. " +

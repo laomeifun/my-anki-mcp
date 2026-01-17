@@ -20,7 +20,7 @@ export class NotesInfoTool {
   constructor(private readonly ankiClient: AnkiConnectClient) {}
 
   @Tool({
-    name: "notesInfo",
+    name: "notes_info",
     description:
       "Get detailed information about specific notes including all fields, tags, model info, and CSS styling. " +
       "Use this after findNotes to get complete note data. Includes CSS for proper rendering awareness.",

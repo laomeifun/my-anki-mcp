@@ -19,7 +19,7 @@ export class DeleteNotesTool {
   constructor(private readonly ankiClient: AnkiConnectClient) {}
 
   @Tool({
-    name: "deleteNotes",
+    name: "delete_notes",
     description:
       "Delete notes by their IDs. This will permanently remove the notes and ALL associated cards. " +
       "This action cannot be undone unless you have a backup. CRITICAL: This is destructive and permanent - only delete notes the user explicitly confirmed for deletion.",

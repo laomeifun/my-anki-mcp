@@ -75,7 +75,7 @@ export class UpdateNoteFieldsTool {
   constructor(private readonly ankiClient: AnkiConnectClient) {}
 
   @Tool({
-    name: "updateNoteFields",
+    name: "update_note_fields",
     description:
       "Update the fields of an existing note. Supports HTML content in fields and preserves CSS styling. " +
       "WARNING: Do not view the note in Anki browser while updating, or the fields will not update properly. " +

@@ -18,7 +18,7 @@ export class ModelNamesTool {
   constructor(private readonly ankiClient: AnkiConnectClient) {}
 
   @Tool({
-    name: "modelNames",
+    name: "model_names",
     description:
       "Get a list of all available note type (model) names in Anki. Use this to see what note types are available before creating notes.",
     parameters: z.object({}),

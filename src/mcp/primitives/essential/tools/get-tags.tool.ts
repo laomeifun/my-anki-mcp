@@ -23,7 +23,7 @@ export class GetTagsTool {
   constructor(private readonly ankiClient: AnkiConnectClient) {}
 
   @Tool({
-    name: "getTags",
+    name: "get_tags",
     description:
       "Get all tags in the Anki collection. Use this to discover existing tags before creating notes to maintain consistency and prevent tag duplication (e.g., avoiding 'roman-empire' vs 'roman_empire' vs 'RomanEmpire').",
     parameters: z.object({

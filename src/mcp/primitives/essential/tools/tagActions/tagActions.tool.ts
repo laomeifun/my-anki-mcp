@@ -31,7 +31,7 @@ export class TagActionsTool {
   constructor(private readonly ankiClient: AnkiConnectClient) {}
 
   @Tool({
-    name: "tagActions",
+    name: "tag_actions",
     description: `Manage tags on Anki notes. Supports four actions:
 - addTags: Add tags to specified notes (notes: number[], tags: string)
 - removeTags: Remove tags from specified notes (notes: number[], tags: string)

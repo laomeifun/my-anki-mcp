@@ -43,7 +43,7 @@ export class AddNoteTool {
   constructor(private readonly ankiClient: AnkiConnectClient) {}
 
   @Tool({
-    name: "addNote",
+    name: "add_note",
     description:
       "Add a new note to Anki. Use modelNames to see available note types and modelFieldNames to see required fields. Returns the note ID on success. IMPORTANT: Only create notes that were explicitly requested by the user.",
     parameters: z.object({

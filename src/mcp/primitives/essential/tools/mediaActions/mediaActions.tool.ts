@@ -35,7 +35,7 @@ export class MediaActionsTool {
   constructor(private readonly ankiClient: AnkiConnectClient) {}
 
   @Tool({
-    name: "mediaActions",
+    name: "media_actions",
     description: `Manage Anki media files (audio/images). Supports four actions:
 - storeMediaFile: Upload media to Anki (supports base64 data, file paths, or URLs)
 - retrieveMediaFile: Download media from Anki as base64

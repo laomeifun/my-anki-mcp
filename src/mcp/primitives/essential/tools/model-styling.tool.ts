@@ -18,7 +18,7 @@ export class ModelStylingTool {
   constructor(private readonly ankiClient: AnkiConnectClient) {}
 
   @Tool({
-    name: "modelStyling",
+    name: "model_styling",
     description:
       "Get the CSS styling for a specific note type (model). This CSS is used when rendering cards of this type.",
     parameters: z.object({
