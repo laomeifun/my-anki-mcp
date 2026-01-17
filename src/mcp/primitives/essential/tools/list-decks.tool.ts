@@ -26,8 +26,16 @@ export class ListDecksTool {
       include_stats: z
         .boolean()
         .default(false)
-        .describe("Include card count statistics for each deck"),
+        .describe(
+          "Include card count statistics for each deck (default: false)",
+        ),
     }),
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    },
   })
   async listDecks(
     { include_stats }: { include_stats?: boolean },

@@ -112,9 +112,15 @@ export class AddNotesTool {
         .optional()
         .default(false)
         .describe(
-          "If true, stop processing immediately when the first note fails validation. Useful for debugging.",
+          "If true, stop processing immediately when the first note fails validation. Useful for debugging (default: false).",
         ),
     }),
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: false,
+    },
   })
   async addNotes(
     {

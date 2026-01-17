@@ -39,6 +39,12 @@ export class CreateDeckTool {
           },
         ),
     }),
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    },
   })
   async createDeck({ deck_name }: { deck_name: string }, context: Context) {
     try {

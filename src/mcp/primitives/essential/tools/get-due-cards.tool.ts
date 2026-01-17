@@ -35,8 +35,14 @@ export class GetDueCardsTool {
         .min(1)
         .max(50)
         .default(10)
-        .describe("Maximum number of cards to return"),
+        .describe("Maximum number of cards to return (default: 10, max: 50)"),
     }),
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    },
   })
   async getDueCards(
     { deck_name, limit }: { deck_name?: string; limit?: number },

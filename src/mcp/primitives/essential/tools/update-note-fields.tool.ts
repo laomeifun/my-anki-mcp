@@ -83,6 +83,12 @@ export class UpdateNoteFieldsTool {
     parameters: z.object({
       note: NoteUpdateParamSchema,
     }),
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    },
   })
   async updateNoteFields(
     {

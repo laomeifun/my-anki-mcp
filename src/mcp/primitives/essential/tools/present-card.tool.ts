@@ -29,8 +29,16 @@ export class PresentCardTool {
       show_answer: z
         .boolean()
         .default(false)
-        .describe("Whether to include the answer/back content in the response"),
+        .describe(
+          "Whether to include the answer/back content in the response (default: false)",
+        ),
     }),
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    },
   })
   async presentCard(
     { card_id, show_answer }: { card_id: number; show_answer?: boolean },

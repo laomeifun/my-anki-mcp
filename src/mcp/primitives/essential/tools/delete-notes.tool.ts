@@ -37,6 +37,12 @@ export class DeleteNotesTool {
           "Must be set to true to confirm you want to permanently delete these notes and their cards",
         ),
     }),
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: false,
+      openWorldHint: false,
+    },
   })
   async deleteNotes(
     {

@@ -22,6 +22,12 @@ export class ModelNamesTool {
     description:
       "Get a list of all available note type (model) names in Anki. Use this to see what note types are available before creating notes.",
     parameters: z.object({}),
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    },
   })
   async modelNames(_args: Record<string, never>, context: Context) {
     try {

@@ -94,9 +94,15 @@ export class UpdateNotesFieldsTool {
         .optional()
         .default(false)
         .describe(
-          "If true, stop processing immediately when the first note fails. Useful for debugging.",
+          "If true, stop processing immediately when the first note fails. Useful for debugging (default: false).",
         ),
     }),
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    },
   })
   async updateNotesFields(
     {

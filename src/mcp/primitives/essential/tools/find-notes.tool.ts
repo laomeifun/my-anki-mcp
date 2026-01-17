@@ -33,6 +33,12 @@ export class FindNotesTool {
             "OR for alternatives. Empty string returns all notes.",
         ),
     }),
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    },
   })
   async findNotes({ query }: { query: string }, context: Context) {
     try {

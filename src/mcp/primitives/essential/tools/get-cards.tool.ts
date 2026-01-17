@@ -48,15 +48,21 @@ export class GetCardsTool {
           "Specific deck name to get cards from. If not specified, gets cards from all decks",
         ),
       card_state: CardStateEnum.default("due").describe(
-        "Filter by card state: 'due' (cards due for review), 'new' (never seen), 'learning' (in learning queue), 'suspended' (manually suspended), 'buried' (temporarily hidden)",
+        "Filter by card state: 'due' (cards due for review, default), 'new' (never seen), 'learning' (in learning queue), 'suspended' (manually suspended), 'buried' (temporarily hidden)",
       ),
       limit: z
         .number()
         .min(1)
         .max(50)
         .default(10)
-        .describe("Maximum number of cards to return"),
+        .describe("Maximum number of cards to return (default: 10, max: 50)"),
     }),
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    },
   })
   async getCards(
     {

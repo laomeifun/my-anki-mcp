@@ -61,7 +61,7 @@ export class AddNoteTool {
         .boolean()
         .optional()
         .default(false)
-        .describe("Whether to allow adding duplicate notes"),
+        .describe("Whether to allow adding duplicate notes (default: false)"),
       duplicateScope: z
         .enum(["deck", "collection"])
         .optional()
@@ -86,6 +86,12 @@ export class AddNoteTool {
         .optional()
         .describe("Advanced duplicate checking options"),
     }),
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: false,
+    },
   })
   async addNote(
     {

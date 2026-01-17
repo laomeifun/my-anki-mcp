@@ -66,6 +66,12 @@ Tags in addTags/removeTags are space-separated strings (e.g., "tag1 tag2 tag3").
         .optional()
         .describe("[replaceTags] The tag to replace with"),
     }),
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: false,
+    },
   })
   async execute(
     params: {

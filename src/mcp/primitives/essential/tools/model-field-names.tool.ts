@@ -27,6 +27,12 @@ export class ModelFieldNamesTool {
         .min(1)
         .describe("The name of the model/note type to get fields for"),
     }),
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    },
   })
   async modelFieldNames(
     { modelName }: { modelName: string },

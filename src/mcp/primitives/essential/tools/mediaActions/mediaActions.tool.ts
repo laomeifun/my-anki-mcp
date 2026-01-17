@@ -82,6 +82,12 @@ Perfect for workflows like ElevenLabs TTS → Anki audio flashcards.`,
         .optional()
         .describe('[getMediaFilesNames only] Filter pattern (e.g., "*.mp3")'),
     }),
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: false,
+    },
   })
   async execute(
     params: {
