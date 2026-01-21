@@ -8,6 +8,7 @@ import {
   createErrorResponse,
 } from "@/mcp/utils/anki.utils";
 import type { CardTemplate } from "@/mcp/types/anki.types";
+import { jsonStringToNative } from "@/mcp/utils/schema.utils";
 
 /**
  * Tool for creating a new Anki model/note type
@@ -31,38 +32,42 @@ export class CreateModelTool {
         .describe(
           'Unique name for the new model (e.g., "Basic RTL", "Advanced Vocabulary")',
         ),
-      inOrderFields: z
-        .array(z.string().min(1))
-        .min(1)
-        .describe(
-          "Field names in order. IMPORTANT: Pass as a native array of strings, NOT a JSON string. " +
-            'Example: ["Front", "Back"]. At least one field required. ' +
-            "If you are an LLM, do NOT serialize this to a JSON string - pass the array directly.",
-        ),
-      cardTemplates: z
-        .array(
-          z.object({
-            Name: z.string().min(1).describe('Template name (e.g., "Card 1")'),
-            Front: z
-              .string()
-              .min(1)
-              .describe(
-                'Front template HTML with field placeholders (e.g., "{{Front}}")',
-              ),
-            Back: z
-              .string()
-              .min(1)
-              .describe(
-                'Back template HTML with field placeholders (e.g., "{{FrontSide}}<hr id=answer>{{Back}}")',
-              ),
-          }),
-        )
-        .min(1)
-        .describe(
-          "Card templates (at least one required). IMPORTANT: Pass as a native array of objects, NOT a JSON string. " +
-            "Each template generates one card per note. " +
-            "If you are an LLM, do NOT serialize this to a JSON string - pass the array directly.",
-        ),
+      inOrderFields: jsonStringToNative(z.array(z.string().min(1)).min(1), {
+        paramName: "inOrderFields",
+      }).describe(
+        "Field names in order. Pass as a native array (recommended). " +
+          'Example: ["Front", "Back"]. At least one field required. ' +
+          "Also accepts a JSON string for compatibility with some clients.",
+      ),
+      cardTemplates: jsonStringToNative(
+        z
+          .array(
+            z.object({
+              Name: z
+                .string()
+                .min(1)
+                .describe('Template name (e.g., "Card 1")'),
+              Front: z
+                .string()
+                .min(1)
+                .describe(
+                  'Front template HTML with field placeholders (e.g., "{{Front}}")',
+                ),
+              Back: z
+                .string()
+                .min(1)
+                .describe(
+                  'Back template HTML with field placeholders (e.g., "{{FrontSide}}<hr id=answer>{{Back}}")',
+                ),
+            }),
+          )
+          .min(1),
+        { paramName: "cardTemplates" },
+      ).describe(
+        "Card templates (at least one required). Pass as a native array (recommended). " +
+          "Each template generates one card per note. " +
+          "Also accepts a JSON string for compatibility with some clients.",
+      ),
       css: z
         .string()
         .optional()

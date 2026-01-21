@@ -7,6 +7,7 @@ import {
   createSuccessResponse,
   createErrorResponse,
 } from "@/mcp/utils/anki.utils";
+import { jsonStringToNative } from "@/mcp/utils/schema.utils";
 
 const NoteUpdateSchema = z.object({
   id: z
@@ -14,13 +15,13 @@ const NoteUpdateSchema = z.object({
     .describe(
       "The ID of the note to update. Get this from findNotes or notesInfo.",
     ),
-  fields: z
-    .record(z.string(), z.string())
-    .describe(
-      "Field name-value pairs to update. Pass as a native object, NOT a JSON string. " +
-        'Only include fields you want to change. Example: {"Front": "<b>New</b>", "Back": "Updated"}. ' +
-        "If you are an LLM, do NOT serialize this to a JSON string - pass the object directly.",
-    ),
+  fields: jsonStringToNative(z.record(z.string(), z.string()), {
+    paramName: "fields",
+  }).describe(
+    "Field name-value pairs to update. Pass as a native object (recommended). " +
+      'Only include fields you want to change. Example: {"Front": "<b>New</b>", "Back": "Updated"}. ' +
+      "Also accepts a JSON string for compatibility with some clients.",
+  ),
   audio: z
     .array(
       z.object({
@@ -45,15 +46,14 @@ const NoteUpdateSchema = z.object({
 
 type NoteUpdate = z.infer<typeof NoteUpdateSchema>;
 
-const NotesUpdateArraySchema = z
-  .array(NoteUpdateSchema)
-  .min(1)
-  .max(10)
-  .describe(
-    "Array of note update objects. IMPORTANT: Pass as a native array of objects, NOT a JSON string. " +
-      "Max 10 notes per call. Each update requires: id (number), fields (object). " +
-      "If you are an LLM, do NOT serialize this to a JSON string - pass the array directly.",
-  );
+const NotesUpdateArraySchema = jsonStringToNative(
+  z.array(NoteUpdateSchema).min(1).max(10),
+  { paramName: "notes" },
+).describe(
+  "Array of note update objects. Pass as a native array (recommended). " +
+    "Max 10 notes per call. Each update requires: id (number), fields (object). " +
+    "Also accepts a JSON string for compatibility with some clients.",
+);
 
 interface NoteUpdateResult {
   index: number;

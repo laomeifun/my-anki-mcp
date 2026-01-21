@@ -8,18 +8,20 @@ import {
   createSuccessResponse,
   createErrorResponse,
 } from "@/mcp/utils/anki.utils";
+import { jsonStringToNative } from "@/mcp/utils/schema.utils";
 const NoteInputSchema = z.object({
   deckName: z.string().min(1).describe("The deck to add the note to"),
   modelName: z
     .string()
     .min(1)
     .describe('The note type/model to use (e.g., "Basic", "Cloze")'),
-  fields: z
-    .record(z.string(), z.string())
-    .describe(
-      "Field name-value pairs. Pass as a native object, NOT a JSON string. " +
-        'Example: {"Front": "question", "Back": "answer"}',
-    ),
+  fields: jsonStringToNative(z.record(z.string(), z.string()), {
+    paramName: "fields",
+  }).describe(
+    "Field name-value pairs. Pass as a native object (recommended). " +
+      'Example: {"Front": "question", "Back": "answer"}. ' +
+      "Also accepts a JSON string for compatibility with some clients.",
+  ),
   tags: z
     .array(z.string())
     .optional()
@@ -55,15 +57,14 @@ const NoteInputSchema = z.object({
 
 type NoteInput = z.infer<typeof NoteInputSchema>;
 
-const NotesArraySchema = z
-  .array(NoteInputSchema)
-  .min(1)
-  .max(10)
-  .describe(
-    "Array of note objects. IMPORTANT: Pass as a native array of objects, NOT a JSON string. " +
-      "Max 10 notes per call. Each note requires: deckName (string), modelName (string), fields (object). " +
-      "If you are an LLM, do NOT serialize this to a JSON string - pass the array directly.",
-  );
+const NotesArraySchema = jsonStringToNative(
+  z.array(NoteInputSchema).min(1).max(10),
+  { paramName: "notes" },
+).describe(
+  "Array of note objects. Pass as a native array (recommended). " +
+    "Max 10 notes per call. Each note requires: deckName (string), modelName (string), fields (object). " +
+    "Also accepts a JSON string for compatibility with some clients.",
+);
 
 /**
  * Result for each note in the batch

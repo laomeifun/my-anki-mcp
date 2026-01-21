@@ -866,17 +866,20 @@ describe("AddNotesTool", () => {
         {
           deckName: "Default",
           modelName: "Basic",
-          fields: { Front: "Q1", Back: "A1" },
+          fields: { Front: "Q1", Back: "A1" } as Record<string, string>,
         },
         {
           deckName: "Default",
           modelName: "Cloze",
-          fields: { Text: "{{c1::Answer}}", "Back Extra": "Hint" },
+          fields: { Text: "{{c1::Answer}}", "Back Extra": "Hint" } as Record<
+            string,
+            string
+          >,
         },
         {
           deckName: "Default",
           modelName: "Basic",
-          fields: { Front: "Q2", Back: "A2" },
+          fields: { Front: "Q2", Back: "A2" } as Record<string, string>,
         },
       ];
       setupModelFieldNamesMock([1, 2, 3]);
@@ -935,12 +938,15 @@ describe("AddNotesTool", () => {
         {
           deckName: "Default",
           modelName: "Basic",
-          fields: { Front: "Q", Back: "A" },
+          fields: { Front: "Q", Back: "A" } as Record<string, string>,
         },
         {
           deckName: "Default",
           modelName: "Cloze",
-          fields: { Text: "{{c1::test}}", WrongExtra: "value2" },
+          fields: { Text: "{{c1::test}}", WrongExtra: "value2" } as Record<
+            string,
+            string
+          >,
         },
       ];
       setupModelFieldNamesMock([111, null]);

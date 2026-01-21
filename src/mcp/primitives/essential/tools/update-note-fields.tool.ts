@@ -7,6 +7,7 @@ import {
   createSuccessResponse,
   createErrorResponse,
 } from "@/mcp/utils/anki.utils";
+import { jsonStringToNative } from "@/mcp/utils/schema.utils";
 
 const NoteUpdateSchema = z.object({
   id: z
@@ -14,13 +15,13 @@ const NoteUpdateSchema = z.object({
     .describe(
       "The ID of the note to update. Get this from findNotes or notesInfo.",
     ),
-  fields: z
-    .record(z.string(), z.string())
-    .describe(
-      "Field name-value pairs to update. Pass as a native object, NOT a JSON string. " +
-        'Only include fields you want to change. HTML content is supported. Example: {"Front": "<b>New question</b>", "Back": "New answer"}. ' +
-        "If you are an LLM, do NOT serialize this to a JSON string - pass the object directly.",
-    ),
+  fields: jsonStringToNative(z.record(z.string(), z.string()), {
+    paramName: "fields",
+  }).describe(
+    "Field name-value pairs to update. Pass as a native object (recommended). " +
+      'Only include fields you want to change. HTML content is supported. Example: {"Front": "<b>New question</b>", "Back": "New answer"}. ' +
+      "Also accepts a JSON string for compatibility with some clients.",
+  ),
   audio: z
     .array(
       z.object({
@@ -61,10 +62,12 @@ export class UpdateNoteFieldsTool {
       "WARNING: Do not view the note in Anki browser while updating, or the fields will not update properly. " +
       "Close the browser or switch to a different note before updating. IMPORTANT: Only update notes that the user explicitly asked to modify.",
     parameters: z.object({
-      note: NoteUpdateSchema.describe(
-        "Note update object. IMPORTANT: Pass as a native object, NOT a JSON string. " +
+      note: jsonStringToNative(NoteUpdateSchema, {
+        paramName: "note",
+      }).describe(
+        "Note update object. Pass as a native object (recommended). " +
           'Requires id (number) and fields (object). Example: {id: 123, fields: {"Front": "new content"}}. ' +
-          "If you are an LLM, do NOT serialize this to a JSON string - pass the object directly.",
+          "Also accepts a JSON string for compatibility with some clients.",
       ),
     }),
     annotations: {

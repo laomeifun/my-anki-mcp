@@ -8,14 +8,15 @@ import {
   createSuccessResponse,
   createErrorResponse,
 } from "@/mcp/utils/anki.utils";
+import { jsonStringToNative } from "@/mcp/utils/schema.utils";
 
-const FieldsSchema = z
-  .record(z.string(), z.string())
-  .describe(
-    "Field name-value pairs. Pass as a native object, NOT a JSON string. " +
-      'Example: {"Front": "question", "Back": "answer"}. ' +
-      "If you are an LLM, do NOT serialize this to a JSON string - pass the object directly.",
-  );
+const FieldsSchema = jsonStringToNative(z.record(z.string(), z.string()), {
+  paramName: "fields",
+}).describe(
+  "Field name-value pairs. Pass as a native object (recommended). " +
+    'Example: {"Front": "question", "Back": "answer"}. ' +
+    "Also accepts a JSON string for compatibility with some clients.",
+);
 
 /**
  * Tool for adding new notes to Anki

@@ -8,6 +8,7 @@ import {
   createErrorResponse,
 } from "@/mcp/utils/anki.utils";
 import { NoteInfo } from "@/mcp/types/anki.types";
+import { jsonStringToNative } from "@/mcp/utils/schema.utils";
 
 /**
  * Tool for retrieving detailed information about notes
@@ -24,16 +25,14 @@ export class NotesInfoTool {
       "Get detailed information about specific notes including all fields, tags, model info, and CSS styling. " +
       "Use this after findNotes to get complete note data. Includes CSS for proper rendering awareness.",
     parameters: z.object({
-      notes: z
-        .array(z.number())
-        .min(1)
-        .max(100)
-        .describe(
-          "Array of note IDs to get information for (max 100 at once for performance). " +
-            "IMPORTANT: Pass as a native array of numbers, NOT a JSON string. " +
-            "Get these IDs from findNotes tool. Example: [1234567890, 1234567891]. " +
-            "If you are an LLM, do NOT serialize this to a JSON string - pass the array directly.",
-        ),
+      notes: jsonStringToNative(z.array(z.number()).min(1).max(100), {
+        paramName: "notes",
+      }).describe(
+        "Array of note IDs to get information for (max 100 at once for performance). " +
+          "Pass as a native array (recommended). " +
+          "Get these IDs from findNotes tool. Example: [1234567890, 1234567891]. " +
+          "Also accepts a JSON string for compatibility with some clients.",
+      ),
     }),
     annotations: {
       readOnlyHint: true,

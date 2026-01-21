@@ -7,6 +7,7 @@ import {
   createSuccessResponse,
   createErrorResponse,
 } from "@/mcp/utils/anki.utils";
+import { jsonStringToNative } from "@/mcp/utils/schema.utils";
 
 /**
  * Tool for deleting notes and their associated cards
@@ -23,17 +24,15 @@ export class DeleteNotesTool {
       "Delete notes by their IDs. This will permanently remove the notes and ALL associated cards. " +
       "This action cannot be undone unless you have a backup. CRITICAL: This is destructive and permanent - only delete notes the user explicitly confirmed for deletion.",
     parameters: z.object({
-      notes: z
-        .array(z.number())
-        .min(1)
-        .max(100)
-        .describe(
-          "Array of note IDs to delete (max 100 at once for safety). " +
-            "IMPORTANT: Pass as a native array of numbers, NOT a JSON string. " +
-            "Get these IDs from findNotes tool. ALL cards associated with these notes will be deleted. " +
-            "Example: [1234567890, 1234567891]. " +
-            "If you are an LLM, do NOT serialize this to a JSON string - pass the array directly.",
-        ),
+      notes: jsonStringToNative(z.array(z.number()).min(1).max(100), {
+        paramName: "notes",
+      }).describe(
+        "Array of note IDs to delete (max 100 at once for safety). " +
+          "Pass as a native array (recommended). " +
+          "Get these IDs from findNotes tool. ALL cards associated with these notes will be deleted. " +
+          "Example: [1234567890, 1234567891]. " +
+          "Also accepts a JSON string for compatibility with some clients.",
+      ),
       confirmDeletion: z
         .boolean()
         .describe(
